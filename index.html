@@ -228,7 +228,7 @@ const FUN = ['Dink Dynasty','Kitchen Crashers','Net Ninjas','The Big Dills','Lob
 const PRIZES = {gold:['Trophy + $50 gift card each','Trophy + $25 gift card each','Trophy each'], silver:['Trophy + $25 gift card each','Trophy each','Trophy each']};
 const SAMPLE = ['Eddie + Jess','Marco + Lina','Sam + Priya','Dave + Kim','Tony + Grace','Ben + Chloe','Ray + Mia','Josh + Ana','Kevin + Lisa','Mike + Tina','Chris + Amy','Danny + Rosa','Steve + Joy','Paul + Erin','Andy + Nora','Luis + Ivy'];
 
-function blank(){return {event:{name:'Pickleball Party',date:'',time:'',location:'Build Pickleball, Chino Hills',payInfo:'$20 per player (covers courts and pizza)',notes:'Pizza lunch included. Kids welcome in the kids’ zone.',courts:4,minutes:12,pools:4,fee:20,funNames:true,regOpen:true,published:false,prizes:JSON.parse(JSON.stringify(PRIZES))},players:[],teams:[],games:[],bracket:null,raffle:{bonus:{},winners:[]},clock:{running:false,end:0,remain:null}}}
+function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'',end:'',location:'Build Pickleball, Chino Hills',payInfo:'$20 per player (covers courts and pizza)',notes:'Pizza lunch included. Kids welcome in the kids’ zone.',courts:4,minutes:12,pools:4,fee:20,funNames:true,regOpen:true,published:false,prizes:JSON.parse(JSON.stringify(PRIZES))},players:[],teams:[],games:[],bracket:null,raffle:{bonus:{},winners:[]},clock:{running:false,end:0,remain:null}}}
 function normalize(d){const b=blank();d=Object.assign(b,d||{});d.event=Object.assign(blank().event,d.event||{});d.event.prizes=Object.assign(blank().event.prizes,d.event.prizes||{});d.raffle=Object.assign({bonus:{},winners:[]},d.raffle||{});d.clock=Object.assign({running:false,end:0,remain:null},d.clock||{});['players','teams','games'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d}
 
 let S = blank();
@@ -255,6 +255,9 @@ function rounds(){return S.games.reduce((m,g)=>Math.max(m,g.round||0),0)}
 function money(n){return '$'+Number(n||0).toLocaleString()}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function fmtDate(){if(!S.event.date)return '';return new Date(S.event.date+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}
+function fmtTime(t){if(!/^\d{1,2}:\d{2}/.test(t||''))return '';let [h,m]=t.split(':').map(Number);const ap=h>=12?'pm':'am';h=h%12||12;return h+(m?':'+String(m).padStart(2,'0'):'')+' '+ap}
+function timeRange(){const e=S.event,a=fmtTime(e.start),b=fmtTime(e.end);if(a&&b)return a+' – '+b;if(a)return 'Starts '+a;return e.time||''}
+function updateHeader(){$('#title').textContent=S.event.name||'Pickleball Party';$('#subtitle').textContent=[fmtDate(),isAdmin&&S.players.length?S.players.length+' players':'',S.event.published&&S.teams.length?S.teams.length+' teams':''].filter(Boolean).join(' · ')||'Tournament';document.title=(S.event.name||'Pickleball Party')+' · Tournament'}
 const cloud = () => BE && BE.mode === 'cloud';
 function myPlayerIds(){return (user&&myReg)?[0,1].map(i=>'r_'+user.uid+'_'+i):[]}
 function myTeamIds(){const ids=myPlayerIds();return new Set(S.teams.filter(t=>ids.includes(t.p1)||ids.includes(t.p2)).map(t=>t.id))}
@@ -488,7 +491,8 @@ function notPosted(){return `<div class="card empty"><p>Teams and the schedule w
 
 function vRegister(){
   const e=S.event,d=fmtDate();
-  const when=d?(d+(e.time?' · '+e.time:'')):(e.time?e.time+' · date coming soon':'Date and time coming soon');
+  const tm=timeRange();
+  const when=d?(d+(tm?' · '+tm:'')):(tm?tm+' · date coming soon':'Date and time coming soon');
   const facts=[['When',when],e.location?['Where',e.location]:null,e.payInfo?['Cost',e.payInfo]:null].filter(Boolean);
   let hero=`<section class="card hero"><h2>${esc(e.name)}</h2>${facts.length?`<div class="facts">${facts.map(f=>`<div><b>${f[0]}</b>${esc(f[1])}</div>`).join('')}</div>`:''}${e.notes?`<p>${esc(e.notes)}</p>`:''}</section>`;
   let body='';
@@ -549,8 +553,9 @@ function vSetup(){
   </div>${cloud()?`<div class="row" style="margin-top:12px"><button class="btn" data-action="copyLink">Copy site link</button><button class="btn" data-tab="register">Preview sign-up page</button></div>`:''}</section>
   <section class="card"><h2>Event</h2><div class="grid2">
     <label>Event name<input data-bind="name" value="${esc(e.name)}"></label>
-    <label>Date<input type="date" data-bind="date" value="${esc(e.date)}"></label>
-    <label>Time<input data-bind="time" value="${esc(e.time)}" placeholder="e.g. 11:00 am – 3:00 pm"></label>
+    <label>Date<input type="date" data-bind="date" min="2025-01-01" max="2035-12-31" value="${esc(e.date)}"></label>
+    <label>Start time<input type="time" step="900" data-bind="start" value="${esc(e.start)}"></label>
+    <label>End time<input type="time" step="900" data-bind="end" value="${esc(e.end)}"></label>
     <label>Location<input data-bind="location" value="${esc(e.location)}"></label>
     <label>Cost and how to pay<input data-bind="payInfo" value="${esc(e.payInfo)}"></label>
     <label>Notes for players<input data-bind="notes" value="${esc(e.notes)}"></label>
@@ -776,7 +781,19 @@ document.addEventListener('change',e=>{
   const el=e.target,d=el.dataset;
   if(!isAdmin)return;
   if(d.score!=null){setScore(d.score,el.value);setTimeout(renderKeep,0);return}
-  if(d.bind!=null){const k=d.bind;S.event[k]=el.type==='checkbox'?el.checked:(el.type==='number'?(el.value===''?'':Number(el.value)):el.value);if(k==='minutes'&&!S.clock.running)S.clock.remain=null;save(k==='regOpen'||k==='published');render();return}
+  if(d.bind!=null){
+    const k=d.bind;
+    if(el.type==='date'||el.type==='time'){
+      // Browsers fire "change" while a date is still being typed (year 0002, 0020…). Keep only complete values and don't redraw, so typing isn't interrupted.
+      if(el.type==='date'&&el.value&&!(Number(el.value.slice(0,4))>=2000))return;
+      S.event[k]=el.value;save();updateHeader();return;
+    }
+    S.event[k]=el.type==='checkbox'?el.checked:(el.type==='number'?(el.value===''?'':Number(el.value)):el.value);
+    if(k==='minutes'&&!S.clock.running)S.clock.remain=null;
+    save(k==='regOpen'||k==='published');
+    if(el.type==='checkbox')render();else updateHeader();
+    return;
+  }
   if(d.prize!=null){const [dv,i]=d.prize.split(':');S.event.prizes[dv][+i]=el.value;save();return}
   if(d.paid!=null){const p=P(d.paid);if(!p)return;p.paid=el.checked;const rid=regIdOf(p);if(rid){const all=S.players.filter(x=>regIdOf(x)===rid).every(x=>x.paid);Promise.resolve(BE.setRegPaid(rid,all)).catch(()=>{})}save();render();return}
   if(d.regpaid!=null){setHouseholdPaid(d.regpaid,el.checked);save();render();return}
