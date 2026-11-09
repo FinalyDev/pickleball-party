@@ -112,9 +112,9 @@ tr.mine td{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 
 /* players */
 .plist{display:grid;gap:6px}
-.prow{display:grid;grid-template-columns:auto 1fr 110px auto;gap:8px;align-items:center}
+.prow{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center}
 .prow .static{padding:9px 11px;font-weight:600}
-@media (max-width:520px){.prow{grid-template-columns:auto 1fr 80px auto}}
+@media (max-width:520px){.prow{grid-template-columns:1fr 80px auto}}
 .chip{font-size:11px;font-weight:600;color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent);border-radius:999px;padding:1px 8px;margin-left:6px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px}
 .stat{background:var(--surface-2);border-radius:10px;padding:10px 12px}
@@ -208,7 +208,7 @@ html{-webkit-tap-highlight-color:transparent}
   .gbtn{width:100%;justify-content:center}
   .matches,.courts,.cols{grid-template-columns:1fr}
   .court .vs{font-size:19px}
-  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats{grid-template-columns:repeat(3,1fr)}
   table{font-size:13.5px}
   th,td{padding:8px 4px}
   .steps li{padding:8px}
@@ -286,7 +286,7 @@ const FUN = ['Dink Dynasty','Kitchen Crashers','Net Ninjas','The Big Dills','Lob
 const PRIZES = {gold:['Trophy + $50 gift card each','Trophy + $25 gift card each','Trophy each'], silver:['Trophy + $25 gift card each','Trophy each','Trophy each']};
 const SAMPLE = ['Eddie + Jess','Marco + Lina','Sam + Priya','Dave + Kim','Tony + Grace','Ben + Chloe','Ray + Mia','Josh + Ana','Kevin + Lisa','Mike + Tina','Chris + Amy','Danny + Rosa','Steve + Joy','Paul + Erin','Andy + Nora','Luis + Ivy'];
 
-function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',payInfo:'$20 per player',notes:'Kids welcome in the kids’ zone.',courts:4,minutes:15,pools:4,fee:20,funNames:true,regOpen:true,published:false,prizes:JSON.parse(JSON.stringify(PRIZES))},players:[],teams:[],games:[],bracket:null,raffle:{bonus:{},winners:[]}}}
+function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',notes:'Kids welcome in the kids’ zone.',courts:4,minutes:15,pools:4,funNames:true,regOpen:true,published:false,prizes:JSON.parse(JSON.stringify(PRIZES))},players:[],teams:[],games:[],bracket:null,raffle:{bonus:{},winners:[]}}}
 function normalize(d){const b=blank();d=Object.assign(b,d||{});d.event=Object.assign(blank().event,d.event||{});d.event.prizes=Object.assign(blank().event.prizes,d.event.prizes||{});d.raffle=Object.assign({bonus:{},winners:[]},d.raffle||{});['players','teams','games'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d}
 
 let S = blank();
@@ -310,7 +310,6 @@ function loser(g){const w=winner(g);return w==null?null:(w===g.t1?g.t2:g.t1)}
 function poolCount(){return Math.max(1,Math.min(parseInt(S.event.pools)||1,Math.floor(S.teams.length/2)||1))}
 function poolsList(){return [...new Set(S.teams.map(t=>t.pool).filter(Boolean))].sort()}
 function rounds(){return S.games.reduce((m,g)=>Math.max(m,g.round||0),0)}
-function money(n){return '$'+Number(n||0).toLocaleString()}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function fmtDate(){if(!S.event.date)return '';return new Date(S.event.date+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}
 function fmtTime(t){if(!/^\d{1,2}:\d{2}/.test(t||''))return '';let [h,m]=t.split(':').map(Number);const ap=h>=12?'pm':'am';h=h%12||12;return h+(m?':'+String(m).padStart(2,'0'):'')+' '+ap}
@@ -360,7 +359,7 @@ function syncRegs(){
     const grp=names.length>1?'r_'+r.id:'';
     names.forEach((nm,i)=>{
       const id='r_'+r.id+'_'+i;live.add(id);const p=P(id);
-      if(!p){S.players.push({id,name:nm,group:grp,paid:!!r.paid,src:'reg'});ch=true}
+      if(!p){S.players.push({id,name:nm,group:grp,src:'reg'});ch=true}
       else{if(p.name!==nm){p.name=nm;ch=true}if(p.group!==grp){p.group=grp;ch=true}}
     });
   });
@@ -370,10 +369,6 @@ function syncRegs(){
   return ch;
 }
 function regIdOf(p){return p&&p.src==='reg'?p.id.slice(2,p.id.lastIndexOf('_')):null}
-function setHouseholdPaid(rid,paid){
-  S.players.filter(p=>regIdOf(p)===rid).forEach(p=>p.paid=paid);
-  Promise.resolve(BE.setRegPaid(rid,paid)).catch(e=>toast('Could not update payment: '+(e.code||e.message)));
-}
 
 /* ---------- tournament actions ---------- */
 function addPlayers(text){
@@ -381,7 +376,7 @@ function addPlayers(text){
   text.split(/\n+/).map(l=>l.trim()).filter(Boolean).forEach(line=>{
     const parts=line.split(/\s*\+\s*/).map(s=>s.trim()).filter(Boolean);
     const group=parts.length>1?('g'+uid().slice(0,4)):'';
-    parts.forEach(name=>{S.players.push({id:uid(),name,group,paid:false,src:'manual'});added++});
+    parts.forEach(name=>{S.players.push({id:uid(),name,group,src:'manual'});added++});
   });
   save();toast(added+' player'+(added===1?'':'s')+' added');
 }
@@ -534,7 +529,7 @@ function vRegister(){
   const e=S.event,d=fmtDate();
   const tm=timeRange();
   const when=d?(d+(tm?' · '+tm:'')):(tm?tm+' · date coming soon':'Date and time coming soon');
-  const facts=[['When',when],e.location?['Where',e.location]:null,e.payInfo?['Cost',e.payInfo]:null].filter(Boolean);
+  const facts=[['When',when],e.location?['Where',e.location]:null].filter(Boolean);
   let hero=`<section class="card hero"><h2>${esc(e.name)}</h2>${facts.length?`<div class="facts">${facts.map(f=>`<div><b>${f[0]}</b>${esc(f[1])}</div>`).join('')}</div>`:''}${e.notes?`<p style="white-space:pre-line">${esc(e.notes)}</p>`:''}</section>`;
   let body='';
   if(!cloud()){
@@ -545,9 +540,8 @@ function vRegister(){
     const names=[myReg.name,myReg.partner].filter(Boolean);
     const mine=[...myTeamIds()];
     body=`<section class="card"><h2>You're registered</h2>
-      <div class="status"><span class="pill ok">Registered</span><span class="pill ${myReg.paid?'ok':'warn'}">${myReg.paid?'Paid':'Payment pending'}</span></div>
+      <div class="status"><span class="pill ok">Registered</span></div>
       <table><tbody><tr><th>Players</th><td>${names.map(esc).join(' & ')}</td></tr><tr><th>Kids coming</th><td>${esc(myReg.kids||0)}</td></tr>${myReg.note?`<tr><th>Note</th><td>${esc(myReg.note)}</td></tr>`:''}</tbody></table>
-      ${!myReg.paid&&e.payInfo?`<p class="muted">${esc(e.payInfo)}</p>`:''}
       ${names.length>1?'<p class="muted">You two will be on different teams. Partners are drawn from a hat.</p>':''}
       <div class="row" style="margin-top:12px">${e.regOpen?'<button class="btn" data-action="editReg">Edit</button>':''}<button class="btn danger" data-action="cancelReg">Cancel registration</button></div></section>
       ${e.published&&mine.length?`<section class="card"><h2>Your team${mine.length>1?'s':''}</h2>${mine.map(id=>{const t=T(id);return `<div class="team mine" style="border-radius:10px;border:0"><div><span class="tn">${esc(tname(id))}</span><small style="display:block">${esc(members(t))}</small></div><span class="pill">${t.pool?'Pool '+t.pool:'Pool TBD'}</span></div>`}).join('')}<div class="row" style="margin-top:12px"><button class="btn primary" data-tab="schedule">See your games</button></div></section>`:''}`;
@@ -571,10 +565,9 @@ function vRegister(){
 function vSetup(){
   const e=S.event,r=rounds(),scored=S.games.filter(winner).length;
   const gold=S.bracket&&podium(S.bracket.gold);
-  const paid=S.players.filter(p=>p.paid).length;
   const steps=[
     ['setup','Open registration and share the site link',cloud()&&e.regOpen,cloud()?(e.regOpen?'Registration is open':'Registration is closed'):'Needs Firebase (see README)'],
-    ['players','Collect players',S.players.length>=4,`${S.players.length} players · ${paid} paid`],
+    ['players','Collect players',S.players.length>=4,`${S.players.length} players`],
     ['teams','Draw teams from the hat',S.teams.length>0,`${S.teams.length} teams`],
     ['teams','Draw pools',S.teams.some(t=>t.pool),`${poolsList().length} pools`],
     ['schedule','Generate the schedule',S.games.length>0,S.games.length?`${S.games.length} games · ${r} rounds · about ${r*((parseFloat(e.minutes)||12)+3)} min`:''],
@@ -598,12 +591,10 @@ function vSetup(){
     <label>Start time<input type="time" step="900" data-bind="start" value="${esc(e.start)}"></label>
     <label>End time<input type="time" step="900" data-bind="end" value="${esc(e.end)}"></label>
     <label>Location<input data-bind="location" value="${esc(e.location)}"></label>
-    <label>Cost and how to pay<input data-bind="payInfo" value="${esc(e.payInfo)}"></label>
     <label style="grid-column:1/-1">Notes for players (food, what's included, what to bring)<textarea data-bind="notes" rows="4" style="min-height:96px">${esc(e.notes)}</textarea></label>
     <label>Courts<input type="number" min="1" max="16" data-bind="courts" value="${esc(e.courts)}"></label>
     <label>Minutes per game<input type="number" min="5" max="30" data-bind="minutes" value="${esc(e.minutes)}"></label>
     <label>Number of pools<input type="number" min="1" max="8" data-bind="pools" value="${esc(e.pools)}"></label>
-    <label>Fee per player ($)<input type="number" min="0" data-bind="fee" value="${esc(e.fee)}"></label>
     <label class="check"><input type="checkbox" data-bind="funNames" ${e.funNames?'checked':''}> Use fun team names</label>
   </div>${S.games.length?'<p class="muted" style="margin:10px 0 0">Changed courts or pools? Regenerate the schedule on the Schedule tab.</p>':''}</section>
   <section class="card"><h2>Prizes</h2><div class="cols">
@@ -617,25 +608,24 @@ function vSetup(){
 }
 
 function vPlayers(){
-  const fee=parseFloat(S.event.fee)||0,paid=S.players.filter(p=>p.paid).length;
   const unteamed=S.teams.length&&S.players.some(p=>!teamOf(p.id));
   const kids=kidsTotal(),adults=S.players.length;
   const regRows=regs.slice().sort((a,b)=>((a.createdAt&&a.createdAt.seconds)||0)-((b.createdAt&&b.createdAt.seconds)||0));
   const regCard=cloud()?`<section class="card"><div class="spread" style="margin-bottom:12px"><h2 style="margin:0">Registrations (${regs.length})</h2><span class="pill ${S.event.regOpen?'ok':''}">${S.event.regOpen?'Open':'Closed'}</span></div>
-    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Paid</th><th>Players</th><th>Email</th><th class="num">Kids</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>`<tr><td><input type="checkbox" data-regpaid="${esc(r.id)}" ${r.paid?'checked':''} aria-label="Paid"></td><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td><small>${esc(r.note||'')}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
+    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>`<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td><small>${esc(r.note||'')}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
   </section>`:'';
   return `
-  <div class="stats"><div class="stat"><b>${adults}</b><span>Players</span></div><div class="stat"><b>${kids}</b><span>Kids</span></div><div class="stat"><b>${money(paid*fee)}</b><span>Collected of ${money(adults*fee)}</span></div><div class="stat"><b>${adults+kids}</b><span>Total guests</span></div></div>
+  <div class="stats"><div class="stat"><b>${adults}</b><span>Players</span></div><div class="stat"><b>${kids}</b><span>Kids</span></div><div class="stat"><b>${adults+kids}</b><span>Total guests</span></div></div>
   ${regCard}
   <section class="card"><h2>Add walk-in players</h2>
     <p class="muted" style="margin-top:0">For anyone who didn't register online. One name per line; couples on one line with a plus sign (<b>Eddie + Jess</b>) so the draw keeps them apart.</p>
     <textarea id="bulk" placeholder="Eddie + Jess&#10;Sam + Priya&#10;Alex">${esc(ui.bulk)}</textarea>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-action="addPlayers">Add players</button>${S.players.length?'':'<button class="btn" data-action="sample">Load 32 sample names</button>'}</div>
   </section>
-  <section class="card"><div class="spread" style="margin-bottom:12px"><h2 style="margin:0">All players (${S.players.length})</h2>${fee?`<span class="pill ${paid===S.players.length&&paid?'ok':''}">${paid} of ${S.players.length} paid</span>`:''}</div>
+  <section class="card"><div class="spread" style="margin-bottom:12px"><h2 style="margin:0">All players (${S.players.length})</h2></div>
     ${S.players.length%2?'<div class="banner">Odd number of players: one team will be short a partner. Add one more player or plan a sub.</div>':''}
     ${unteamed?'<div class="banner">Players changed since the draw. Redraw teams to include everyone.</div>':''}
-    ${S.players.length?`<div class="plist"><div class="prow muted" style="font-size:12px;font-weight:600"><span>Paid</span><span>Name</span><span>Couple tag</span><span></span></div>${S.players.map(p=>p.src==='reg'?`<div class="prow"><input type="checkbox" data-paid="${p.id}" ${p.paid?'checked':''} aria-label="Paid"><span class="static">${esc(p.name)}<span class="chip">Registered</span></span><span class="muted" style="font-size:13px">${p.group?'Couple':'—'}</span><span></span></div>`:`<div class="prow"><input type="checkbox" data-paid="${p.id}" ${p.paid?'checked':''} aria-label="Paid"><input data-pname="${p.id}" value="${esc(p.name)}" aria-label="Name"><input data-pgroup="${p.id}" value="${esc(p.group)}" placeholder="—" aria-label="Couple tag"><button class="btn icon" data-action="delPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">✕</button></div>`).join('')}</div>`:'<div class="empty">No players yet.</div>'}
+    ${S.players.length?`<div class="plist"><div class="prow muted" style="font-size:12px;font-weight:600"><span>Name</span><span>Couple tag</span><span></span></div>${S.players.map(p=>p.src==='reg'?`<div class="prow"><span class="static">${esc(p.name)}<span class="chip">Registered</span></span><span class="muted" style="font-size:13px">${p.group?'Couple':'—'}</span><span></span></div>`:`<div class="prow"><input data-pname="${p.id}" value="${esc(p.name)}" aria-label="Name"><input data-pgroup="${p.id}" value="${esc(p.group)}" placeholder="—" aria-label="Couple tag"><button class="btn icon" data-action="delPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">✕</button></div>`).join('')}</div>`:'<div class="empty">No players yet.</div>'}
   </section>`;
 }
 
@@ -885,8 +875,6 @@ document.addEventListener('change',e=>{
     return;
   }
   if(d.prize!=null){const [dv,i]=d.prize.split(':');S.event.prizes[dv][+i]=el.value;save();return}
-  if(d.paid!=null){const p=P(d.paid);if(!p)return;p.paid=el.checked;const rid=regIdOf(p);if(rid){const all=S.players.filter(x=>regIdOf(x)===rid).every(x=>x.paid);Promise.resolve(BE.setRegPaid(rid,all)).catch(()=>{})}save();render();return}
-  if(d.regpaid!=null){setHouseholdPaid(d.regpaid,el.checked);save();render();return}
   if(d.pname!=null){const p=P(d.pname);if(p)p.name=el.value.trim()||p.name;save();render();return}
   if(d.pgroup!=null){const p=P(d.pgroup);if(p)p.group=el.value.trim();save();return}
   if(d.tname!=null){const t=T(d.tname);if(t)t.name=el.value.trim();save();return}
@@ -907,7 +895,7 @@ function localBackend(){
     watchState(cb){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}cb(r);return()=>{}},
     async saveState(json){try{localStorage.setItem(KEY,json)}catch(e){}},
     watchMyReg(){return()=>{}},async saveMyReg(){},async deleteMyReg(){},
-    watchRegs(cb){cb([]);return()=>{}},async setRegPaid(){},async deleteReg(){}
+    watchRegs(cb){cb([]);return()=>{}},async deleteReg(){}
   };
 }
 async function firebaseBackend(cfg){
@@ -937,7 +925,6 @@ async function firebaseBackend(cfg){
     },
     deleteMyReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
     watchRegs(cb){return F.onSnapshot(F.collection(db,'registrations'),qs=>cb(qs.docs.map(d=>({id:d.id,...d.data()}))),e=>console.error(e))},
-    setRegPaid(id,paid){return F.updateDoc(F.doc(db,'registrations',id),{paid:!!paid})},
     deleteReg(id){return F.deleteDoc(F.doc(db,'registrations',id))}
   };
 }

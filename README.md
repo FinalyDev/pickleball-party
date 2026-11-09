@@ -2,7 +2,7 @@
 
 A tournament site for GitHub Pages with Google sign-in.
 
-- **Players** sign in with Google and register: their name, an optional spouse or partner (always put on a different team), and how many kids are coming. They can see their registration, whether they've paid, their team, and their games highlighted on the schedule.
+- **Players** sign in with Google and register: their name, an optional spouse or partner (always put on a different team), and how many kids are coming. They can see their registration, their team, and their games highlighted on the schedule.
 - **You (admin)** get the organizer pages that no one else can see: registrations with emails, payments, walk-ins, the team draw, pools, schedule, score entry, brackets and the raffle (one ticket per player).
 - **Players** use a phone-friendly bottom bar: **Event** (details and sign-up), **My games** (their team, next game and results), **Now playing**, **Schedule** and **Results**. Those pages appear once you turn on "Show teams, schedule and results". Scores update live on every phone.
 
@@ -39,15 +39,15 @@ The values in `firebase-config.js` are meant to be public. Security comes from t
 ## 3. First run
 
 1. Open the site and **sign in with your admin Gmail**. You'll see the Admin badge and the organizer tabs. This first sign-in also creates the tournament record, so do it before sharing the link.
-2. In **Setup**, fill in the date, time, location, cost and the notes for players (food, potluck or what's included). Leave **Registration open** on.
+2. In **Setup**, fill in the date, time, location and the notes for players (cost, food, potluck or what's included). Leave **Registration open** on.
 3. Copy the site link and send it to everyone. They tap **Sign in with Google to register**.
-4. Check **Players** as people sign up: emails, kids count, paid checkboxes, money collected and total guest count. Add walk-ins there too.
+4. Check **Players** as people sign up: emails, kids count and total guest count. Add walk-ins there too.
 5. On the day: close registration, **Teams & Pools** → Draw teams → Draw pools. If a team looks unbalanced, tap a player, then tap another player to swap them. Then Reveal teams one by one → Generate schedule. Then turn on **Show teams, schedule and results** in Setup.
 6. Run rounds from **Now playing**: enter scores as games finish, and seed the brackets after pool play.
 
 ## Good to know
 
 - Before Firebase is set up, the site runs in **local mode**: no sign-in, everything on one device. Handy for a practice run.
-- Players can edit or cancel their own registration while registration is open. Only you can mark someone paid.
+- Players can edit or cancel their own registration while registration is open.
 - Removing a registration on the Players page removes those players from the draw. Redraw teams if that happens after the draw.
 - **Setup → Backup** exports the tournament as a file anytime.
