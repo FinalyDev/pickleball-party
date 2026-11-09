@@ -253,6 +253,33 @@ tr.won td{color:var(--muted);text-decoration:line-through}
 footer{max-width:1100px;margin:0 auto;padding:4px 16px 28px;color:var(--muted);font-size:12.5px}
 @media print{header nav,.btn,footer,.acct{display:none}body{background:#fff}.card{box-shadow:none}}
 
+/* chat */
+.bnav .ico{position:relative;display:inline-flex}
+.bnav button>span:last-child{white-space:nowrap;font-size:11px;letter-spacing:-.01em}
+.nbadge{position:absolute;top:-6px;right:-10px;background:var(--danger);color:#fff;font-style:normal;font-size:10.5px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+#nav .nbadge{position:static;display:inline-grid;margin-left:6px;vertical-align:middle}
+.chathead{padding:12px 14px}
+.chathead small{display:block;margin-top:2px}
+.chatcard{padding:12px}
+.chatlog{display:flex;flex-direction:column;gap:2px;min-height:40vh}
+.msg{display:flex;flex-direction:column;align-items:flex-start;max-width:86%;margin-top:8px}
+.msg.cont{margin-top:2px}
+.msg.me{align-self:flex-end;align-items:flex-end}
+.msg .who{font-size:12px;font-weight:600;color:var(--muted);margin:0 6px 3px}
+.msg .who time{font-weight:400;margin-left:4px}
+.hostb{background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 6px;font-size:10.5px;font-weight:700}
+.bubble{position:relative;background:var(--surface-2);border-radius:16px;padding:9px 13px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px;line-height:1.35}
+.msg.me .bubble{background:var(--brand);color:var(--brand-ink)}
+.msg.host:not(.me) .bubble{background:color-mix(in srgb,var(--accent) 35%,var(--surface-2))}
+.mdel{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:14px;line-height:1;cursor:pointer;opacity:0;padding:0}
+.msg .bubble:hover .mdel,.msg .bubble:focus-within .mdel{opacity:1}
+@media (hover:none){.mdel{opacity:.85}}
+.composer{position:sticky;bottom:0;z-index:20;display:flex;gap:8px;align-items:flex-end;background:var(--bg);padding:8px 0 10px;margin-top:-4px}
+body.player .composer{bottom:calc(66px + env(safe-area-inset-bottom))}
+.composer textarea{flex:1;min-height:44px;max-height:140px;resize:none;border-radius:22px;padding:11px 16px;font-size:16px;line-height:1.3}
+.composer .btn{border-radius:22px;min-height:44px}
+.composer.locked{justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+
 /* rotating partners */
 .bringlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .bringlist li{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;background:var(--surface-2);border-radius:10px}
@@ -304,19 +331,21 @@ details.past summary::-webkit-details-marker{display:none}
 <script type="module">
 'use strict';
 const KEY = 'pickleball-party-v1';
-const TAB_LABELS = {setup:'Setup',players:'Players',play:'Play',board:'Leaderboard',register:'Event',mine:'My games',live:'Now playing',rules:'Rules'};
-const ADMIN_TABS = ['setup','players','play','board','register','rules'];
+const TAB_LABELS = {setup:'Setup',players:'Players',play:'Play',board:'Leaderboard',chat:'Chat',register:'Event',mine:'My games',live:'Now playing',rules:'Rules'};
+const BN_LABELS = {register:'Event',mine:'My games',live:'Courts',chat:'Chat',board:'Ranks',rules:'Rules'};
+const ADMIN_TABS = ['setup','players','play','board','chat','register','rules'];
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 const ICONS = {
   register:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   mine:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>',
   live:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/>',
   rules:'<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/><path d="M9 7h7M9 11h5"/>',
+  chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/>',
   board:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM16 6h3a2 2 0 0 1-2 4h-1M8 6H5a2 2 0 0 0 2 4h1M12 13v4M8 21h8M9 17h6"/>'
 };
 const SAMPLE = ['Eddie + Jess','Marco + Lina','Sam + Priya','Dave + Kim','Tony + Grace','Ben + Chloe','Ray','Mia','Josh','Ana'];
 
-function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',notes:'Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,prizes:{champ:'Trophy + gift card each',runner:'Gift card each'}},players:[],rounds:[],bringing:[]}}
+function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',notes:'Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,chatOn:true,prizes:{champ:'Trophy + gift card each',runner:'Gift card each'}},players:[],rounds:[],bringing:[],chatEpoch:'main'}}
 function normalize(d){
   const b=blank();d=Object.assign(b,d||{});
   d.event=Object.assign(blank().event,d.event||{});
@@ -326,6 +355,7 @@ function normalize(d){
   if(!Array.isArray(d.players))d.players=[];
   if(!Array.isArray(d.rounds))d.rounds=[];
   if(!Array.isArray(d.bringing))d.bringing=[];
+  if(!d.chatEpoch)d.chatEpoch='main';
   return d;
 }
 
@@ -403,7 +433,7 @@ function save(now){
   if(!isAdmin||!BE)return;
   dirty=true;clearTimeout(saveTimer);pendingSave=null;
   const go=()=>{const json=JSON.stringify(S);lastSent=json;dirty=false;
-    Promise.resolve(BE.saveState(json,!!S.event.regOpen)).catch(e=>{console.error(e);toast('Save failed: '+(e.code||e.message||'check your connection'))})};
+    Promise.resolve(BE.saveState(json,{regOpen:!!S.event.regOpen,chatOn:!!S.event.chatOn,chatEpoch:S.chatEpoch})).catch(e=>{console.error(e);toast('Save failed: '+(e.code||e.message||'check your connection'))})};
   if(now)go();else{pendingSave=go;saveTimer=setTimeout(()=>{pendingSave=null;go()},350)}
 }
 function flushSave(){if(pendingSave){clearTimeout(saveTimer);const g=pendingSave;pendingSave=null;g()}}
@@ -416,9 +446,11 @@ function onState(json){
   if(isAdmin&&(dirty||json===lastSent)){ready=true;return}
   try{S=json?normalize(JSON.parse(json)):blank()}catch(e){S=blank()}
   ready=true;
-  if(isAdmin&&syncRegs())save();
+  if(isAdmin){const ch=syncRegs();if(cloud()&&!metaSynced){metaSynced=true;save(true)}else if(ch)save()}
+  ensureChat();
   renderKeep();
 }
+let metaSynced=false;
 
 /* ---------- registrations -> players ---------- */
 function syncRegs(){
@@ -510,6 +542,63 @@ function swapPick(pos){
   ui.swap=null;save();toast(`Swapped ${nm(x)} and ${nm(y)}`);
 }
 
+/* ---------- chat ---------- */
+const chat={key:null,un:null,msgs:[],status:'off',draft:'',busy:false};
+function ensureChat(){
+  const k=(BE&&S.event.chatOn&&user)?S.chatEpoch+'|'+user.uid:null;
+  if(k===chat.key)return;
+  if(chat.un){chat.un();chat.un=null}
+  chat.key=k;chat.msgs=[];
+  if(!k){chat.status='off';return}
+  chat.status='loading';
+  chat.un=BE.watchChat(S.chatEpoch,list=>{chat.msgs=list;chat.status='ok';onChat()},e=>{console.error(e);chat.status='blocked';onChat()});
+}
+const seenKey=()=>KEY+':seen:'+S.chatEpoch;
+function lastSeen(){try{return Number(localStorage.getItem(seenKey()))||0}catch(e){return 0}}
+function markSeen(){const t=chat.msgs.reduce((m,x)=>Math.max(m,x.at||0),0);if(t>lastSeen()){try{localStorage.setItem(seenKey(),String(t))}catch(e){}}}
+function unread(){if(!user||tab==='chat')return 0;const t=lastSeen();return chat.msgs.filter(m=>m.uid!==user.uid&&(m.at||0)>t).length}
+function canPost(){return isAdmin||!cloud()||!!myReg}
+function nearBottom(){return window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-160}
+function chatBottom(){window.scrollTo(0,document.documentElement.scrollHeight)}
+function onChat(){
+  if(!ready)return;
+  if(tab==='chat'){
+    const log=document.getElementById('chatlog');
+    if(log&&chat.status==='ok'){const nb=nearBottom();log.innerHTML=chatLogHtml();markSeen();renderNav();if(nb)chatBottom();return}
+    renderKeep();markSeen();chatBottom();return;
+  }
+  renderNav();
+}
+function fmtClock(ms){return new Date(ms).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}
+function chatLogHtml(){
+  if(chat.status==='loading')return '<div class="empty">Loading…</div>';
+  if(!chat.msgs.length)return '<div class="empty">No messages yet. Say hi!</div>';
+  let prev=null;
+  return chat.msgs.map(m=>{
+    const mine=user&&m.uid===user.uid,cont=prev&&prev.uid===m.uid&&(m.at-prev.at)<5*60000;prev=m;
+    const del=(mine||isAdmin)?`<button class="mdel" data-action="chatDel" data-id="${esc(m.id)}" aria-label="Delete message">×</button>`:'';
+    return `<div class="msg ${mine?'me':''} ${m.host?'host':''} ${cont?'cont':''}">${cont?'':`<div class="who">${esc(mine?'You':m.name)}${m.host?' <span class="hostb">Host</span>':''} <time>${fmtClock(m.at)}</time></div>`}<div class="bubble">${esc(m.text)}${del}</div></div>`;
+  }).join('');
+}
+function vChat(){
+  if(!S.event.chatOn)return `<section class="card empty"><p>The event chat is off right now.</p>${isAdmin?'<button class="btn primary" data-action="chatOnBtn">Turn chat on</button>':''}</section>`;
+  if(!user)return `<section class="card" style="text-align:center"><h2>Event chat</h2><p class="muted" style="margin-top:0">Sign in to see what everyone's saying.</p>${signInBtn()}</section>`;
+  if(chat.status==='blocked')return `<section class="card"><h2>Event chat</h2>${isAdmin?'<div class="banner">Chat needs the latest Firebase rules. Paste the new rules into Firebase → Firestore Database → Rules, then Publish.</div>':'<p class="muted">The chat isn’t open yet. Check back soon.</p>'}</section>`;
+  const head=`<section class="card chathead"><div class="spread"><div><h2 style="margin:0">Event chat</h2><small>Everyone at the event can read this. It clears after the event.</small></div>${isAdmin?'<button class="btn small" data-action="clearChat">Clear chat</button>':''}</div></section>`;
+  const composer=canPost()?`<form class="composer" data-chat-form><textarea id="chatInput" rows="1" maxlength="500" placeholder="Message everyone…" aria-label="Message">${esc(chat.draft)}</textarea><button class="btn primary" type="submit" ${chat.busy?'disabled':''}>Send</button></form>`
+    :`<div class="composer locked"><span>Register to join the chat.</span><button class="btn small primary" data-tab="register">Register</button></div>`;
+  return head+`<section class="card chatcard"><div id="chatlog" class="chatlog" aria-live="polite">${chatLogHtml()}</div></section>`+composer;
+}
+async function sendChat(){
+  const text=String(chat.draft||'').trim().slice(0,500);
+  if(!text||chat.busy)return;
+  const name=(isAdmin?(myReg&&myReg.name)||(user.displayName||'Host').split(' ')[0]:(myReg&&myReg.name))||'Guest';
+  chat.busy=true;
+  try{await BE.sendChat(S.chatEpoch,{uid:user.uid,name:name.slice(0,40),text,host:!!isAdmin});chat.draft='';const el=document.getElementById('chatInput');if(el){el.value='';el.style.height=''}}
+  catch(e){console.error(e);toast(e&&e.code==='permission-denied'?'The chat is closed right now':'Message not sent. Check your connection.')}
+  chat.busy=false;
+}
+
 /* ---------- views ---------- */
 const GOOGLE_G='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
 function signInBtn(label){return `<button class="gbtn" data-action="signin">${GOOGLE_G}${esc(label||'Sign in with Google')}</button>`}
@@ -585,6 +674,7 @@ function vSetup(){
   <section class="card"><h2>What players see</h2><div class="grid2" style="grid-template-columns:1fr">
     <label class="check"><input type="checkbox" data-bind="regOpen" ${e.regOpen?'checked':''}> Registration open</label>
     <label class="check"><input type="checkbox" data-bind="published" ${e.published?'checked':''}> Show courts, partners and leaderboard to everyone</label>
+    <label class="check"><input type="checkbox" data-bind="chatOn" ${e.chatOn?'checked':''}> Event chat on</label>
   </div>${cloud()?`<div class="row" style="margin-top:12px"><button class="btn" data-action="copyLink">Copy site link</button><button class="btn" data-tab="register">Preview sign-up page</button></div>`:''}</section>
   <section class="card"><h2>Event</h2><div class="grid2">
     <label>Event name<input data-bind="name" value="${esc(e.name)}"></label>
@@ -718,13 +808,14 @@ function vRules(){
   +sec('Etiquette',`<ul class="howlist"><li>Tap paddles at the net after every game.</li><li>Call lines on your own side only.</li><li>Ball rolls onto another court? Yell “ball!” and wait for them to stop.</li></ul>`);
 }
 
-const VIEWS={setup:vSetup,players:vPlayers,play:vPlay,board:vBoard,register:vRegister,mine:vMine,live:vLive,rules:vRules};
+const VIEWS={chat:vChat,setup:vSetup,players:vPlayers,play:vPlay,board:vBoard,register:vRegister,mine:vMine,live:vLive,rules:vRules};
 function allowedTabs(){
-  if(isAdmin)return ADMIN_TABS;
-  if(!S.event.published)return ['register','rules'];
+  if(isAdmin)return S.event.chatOn?ADMIN_TABS:ADMIN_TABS.filter(t=>t!=='chat');
+  const c=S.event.chatOn?['chat']:[];
+  if(!S.event.published)return ['register',...c,'rules'];
   const t=['register'];
   if(user&&myReg)t.push('mine');
-  t.push('live','board','rules');
+  t.push('live',...c,'board','rules');
   return t;
 }
 function vAcct(){
@@ -739,14 +830,19 @@ function render(){
   updateHeader();
   $('#acct').innerHTML=vAcct();
   document.body.classList.toggle('player',!isAdmin);
-  const navHtml=isAdmin?tabs.map(k=>(k==='register'?'<span class="sep"></span>':'')+`<button data-tab="${k}" class="${k===tab?'on':''}">${k==='register'?'Sign-up page':TAB_LABELS[k]}</button>`).join(''):'';
+  renderNav(tabs);
+  $('#main').innerHTML=ready?VIEWS[tab]():'<div class="card empty">Loading…</div>';
+  $('#footer').innerHTML=isAdmin?(cloud()?'Saved online. Only you can edit. Players see Event, My games, Courts, Chat, Ranks and Rules.':'Local mode: everything saves on this device.'):'Courts and scores update live.';
+}
+function renderNav(tabs){
+  tabs=tabs||allowedTabs();
+  const u=unread(),badge=k=>k==='chat'&&u?`<i class="nbadge">${u>9?'9+':u}</i>`:'';
+  const navHtml=isAdmin?tabs.map(k=>(k==='register'?'<span class="sep"></span>':'')+`<button data-tab="${k}" class="${k===tab?'on':''}">${k==='register'?'Sign-up page':TAB_LABELS[k]}${badge(k)}</button>`).join(''):'';
   if($('#nav').dataset.sig!==navHtml){$('#nav').innerHTML=navHtml;$('#nav').dataset.sig=navHtml}
   $('#nav').hidden=!isAdmin;
   const bn=$('#bnav');
-  if(!isAdmin&&tabs.length>1){bn.hidden=false;bn.innerHTML=tabs.map(k=>`<button data-tab="${k}" class="${k===tab?'on':''}" ${k===tab?'aria-current="page"':''}><svg ${ICON_ATTR}>${ICONS[k]||''}</svg><span>${TAB_LABELS[k]}</span></button>`).join('')}
+  if(!isAdmin&&tabs.length>1){bn.hidden=false;bn.innerHTML=tabs.map(k=>`<button data-tab="${k}" class="${k===tab?'on':''}" ${k===tab?'aria-current="page"':''}><span class="ico"><svg ${ICON_ATTR}>${ICONS[k]||''}</svg>${badge(k)}</span><span>${BN_LABELS[k]||TAB_LABELS[k]}</span></button>`).join('')}
   else{bn.hidden=true;bn.innerHTML=''}
-  $('#main').innerHTML=ready?VIEWS[tab]():'<div class="card empty">Loading…</div>';
-  $('#footer').innerHTML=isAdmin?(cloud()?'Saved online. Only you can edit. Players see Event, My games, Now playing, Leaderboard and Rules.':'Local mode: everything saves on this device.'):'Courts and scores update live.';
 }
 function focusKey(el){if(!el||!el.dataset)return null;for(const k of ['score','bind','prize','pname','pgroup','form'])if(el.dataset[k]!=null)return `[data-${k}="${CSS.escape(el.dataset[k])}"]`;if(el.id)return '#'+CSS.escape(el.id);return null}
 function renderKeep(){
@@ -756,7 +852,7 @@ function renderKeep(){
   document.querySelectorAll('details.past').forEach(d=>{if(open.includes(d.querySelector('summary b').textContent))d.open=true});
   if(k){const el=document.querySelector(k);if(el){el.focus({preventScroll:true});try{if(s!=null)el.setSelectionRange(s,e)}catch(x){}}}
 }
-function go(t){tab=t;try{localStorage.setItem(KEY+':tab',t)}catch(e){}render();window.scrollTo({top:0});const b=$('#nav').querySelector(`[data-tab="${t}"]`);if(b)b.scrollIntoView({inline:'center',block:'nearest'})}
+function go(t){tab=t;try{localStorage.setItem(KEY+':tab',t)}catch(e){}render();if(t==='chat'){markSeen();renderNav();chatBottom()}else window.scrollTo({top:0});const b=$('#nav').querySelector(`[data-tab="${t}"]`);if(b)b.scrollIntoView({inline:'center',block:'nearest'})}
 
 /* ---------- events ---------- */
 async function doSignIn(){try{await BE.signIn()}catch(e){console.error(e);toast('Sign-in failed: '+(e.code||e.message))}}
@@ -767,6 +863,7 @@ document.addEventListener('click',async e=>{
   switch(act){
     case 'signin':doSignIn();return;
     case 'signout':try{await BE.signOut()}catch(err){}return;
+    case 'chatDel':{if(!confirm('Delete this message?'))return;try{await BE.deleteChat(S.chatEpoch,id)}catch(err){toast('Could not delete that message')}return}
     case 'editReg':ui.editing=true;ui.form=null;render();return;
     case 'cancelEdit':ui.editing=false;ui.form=null;render();return;
     case 'cancelReg':if(!confirm('Cancel your registration?'))return;try{await BE.deleteMyReg(user.uid);Promise.resolve(BE.setMyBringing(user.uid,{item:''})).catch(()=>{});ui.form=null;toast('Registration cancelled')}catch(err){toast('Could not cancel: '+(err.code||err.message))}return;
@@ -787,7 +884,9 @@ document.addEventListener('click',async e=>{
     case 'export':{const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob);const l=document.createElement('a');l.href=u;l.download=(S.event.name||'pickleball').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-backup.json';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);return}
     case 'import':$('#importFile').click();return;
     case 'resetRounds':if(confirm('Clear every round and score? Players and settings stay.')){S.rounds=[];ui.swap=null;save(true)}break;
-    case 'reset':if(confirm('Erase all players, rounds, scores and settings? Online registrations stay and will be added back.')){S=blank();syncRegs();save(true)}break;
+    case 'clearChat':{if(!confirm('Clear the chat for everyone?'))return;const old=S.chatEpoch;S.chatEpoch=uid();save(true);ensureChat();Promise.resolve(BE.clearChat(old)).catch(()=>{});toast('Chat cleared');break}
+    case 'chatOnBtn':S.event.chatOn=true;save(true);ensureChat();break;
+    case 'reset':if(confirm('Erase all players, rounds, scores, chat and settings? Online registrations stay and will be added back.')){const oldChat=S.chatEpoch;S=blank();S.chatEpoch=uid();Promise.resolve(BE.clearChat(oldChat)).catch(()=>{});syncRegs();save(true)}break;
   }
   render();
 });
@@ -795,8 +894,13 @@ document.addEventListener('input',e=>{
   const el=e.target;
   if(el.dataset.form!=null&&ui.form){ui.form[el.dataset.form]=el.value}
   if(el.id==='bulk')ui.bulk=el.value;
+  if(el.id==='chatInput'){chat.draft=el.value;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px'}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='chatInput'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&window.matchMedia('(hover:hover)').matches){e.preventDefault();sendChat()}
 });
 document.addEventListener('submit',async e=>{
+  if(e.target.matches('[data-chat-form]')){e.preventDefault();sendChat();return}
   if(!e.target.matches('[data-form-root]'))return;
   e.preventDefault();
   if(!user||!ui.form)return;
@@ -829,7 +933,8 @@ document.addEventListener('change',e=>{
       S.event[k]=el.value;save();updateHeader();return;
     }
     S.event[k]=el.type==='checkbox'?el.checked:(el.type==='number'?(el.value===''?'':Number(el.value)):el.value);
-    save(k==='regOpen'||k==='published');
+    save(k==='regOpen'||k==='published'||k==='chatOn');
+    if(k==='chatOn')ensureChat();
     if(el.type==='checkbox'||el.type==='number')renderKeep();else updateHeader();
     return;
   }
@@ -854,7 +959,14 @@ function localBackend(){
     async saveState(json){try{localStorage.setItem(KEY,json)}catch(e){}},
     watchMyReg(){return()=>{}},async saveMyReg(){},async deleteMyReg(){},
     watchRegs(cb){cb([]);return()=>{}},async deleteReg(){},
-    watchBringing(cb){cb(null);return()=>{}},async setMyBringing(){},async deleteBringing(){}
+    watchBringing(cb){cb(null);return()=>{}},async setMyBringing(){},async deleteBringing(){},
+    _chatCbs:[],
+    _chatGet(ep){try{return JSON.parse(localStorage.getItem(KEY+':chat:'+ep))||[]}catch(e){return []}},
+    _chatPut(ep,l){try{localStorage.setItem(KEY+':chat:'+ep,JSON.stringify(l))}catch(e){}this._chatCbs.forEach(c=>c.ep===ep&&c.cb(l.slice()))},
+    watchChat(ep,cb){const o={ep,cb};this._chatCbs.push(o);setTimeout(()=>cb(this._chatGet(ep)),0);return()=>{this._chatCbs=this._chatCbs.filter(x=>x!==o)}},
+    async sendChat(ep,m){const l=this._chatGet(ep);l.push({id:uid(),...m,at:Date.now()});this._chatPut(ep,l)},
+    async deleteChat(ep,id){this._chatPut(ep,this._chatGet(ep).filter(x=>x.id!==id))},
+    async clearChat(ep){try{localStorage.removeItem(KEY+':chat:'+ep)}catch(e){}}
   };
 }
 async function firebaseBackend(cfg){
@@ -876,7 +988,7 @@ async function firebaseBackend(cfg){
     signOut(){return A.signOut(auth)},
     async checkAdmin(){try{await F.getDoc(F.doc(db,'admin','check'));return true}catch(e){return false}},
     watchState(cb){return F.onSnapshot(stateRef,s=>cb(s.exists()?s.data().json:null),e=>{console.error(e);toast('Could not load the event')})},
-    saveState(json,regOpen){return F.setDoc(stateRef,{json,regOpen:!!regOpen,updatedAt:F.serverTimestamp()})},
+    saveState(json,m){m=m||{};return F.setDoc(stateRef,{json,regOpen:!!m.regOpen,chatOn:!!m.chatOn,chatEpoch:String(m.chatEpoch||'main'),updatedAt:F.serverTimestamp()})},
     watchMyReg(id,cb){return F.onSnapshot(F.doc(db,'registrations',id),s=>cb(s.exists()?s.data():null),()=>cb(null))},
     saveMyReg(id,data,isNew){
       const extra=isNew?{paid:false,createdAt:F.serverTimestamp()}:{};
@@ -887,7 +999,11 @@ async function firebaseBackend(cfg){
     deleteReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
     watchBringing(cb){return F.onSnapshot(F.collection(db,'bringing'),qs=>cb(qs.docs.map(d=>({uid:d.id,name:d.data().name,item:d.data().item}))),()=>cb(null))},
     setMyBringing(id,b){const ref=F.doc(db,'bringing',id);return b.item?F.setDoc(ref,{name:String(b.name||'').slice(0,90),item:String(b.item).slice(0,100),updatedAt:F.serverTimestamp()}):F.deleteDoc(ref)},
-    deleteBringing(id){return F.deleteDoc(F.doc(db,'bringing',id))}
+    deleteBringing(id){return F.deleteDoc(F.doc(db,'bringing',id))},
+    watchChat(ep,cb,err){const q=F.query(F.collection(db,'chats',ep,'messages'),F.orderBy('at'),F.limitToLast(300));return F.onSnapshot(q,qs=>cb(qs.docs.map(d=>{const v=d.data({serverTimestamps:'estimate'});return {id:d.id,uid:v.uid,name:v.name,text:v.text,host:!!v.host,at:v.at&&v.at.toMillis?v.at.toMillis():Date.now()}})),err)},
+    sendChat(ep,m){return F.addDoc(F.collection(db,'chats',ep,'messages'),{uid:m.uid,name:m.name,text:m.text,host:!!m.host,at:F.serverTimestamp()})},
+    deleteChat(ep,id){return F.deleteDoc(F.doc(db,'chats',ep,'messages',id))},
+    async clearChat(ep){const qs=await F.getDocs(F.collection(db,'chats',ep,'messages'));await Promise.all(qs.docs.map(d=>F.deleteDoc(d.ref)))}
   };
 }
 
@@ -904,6 +1020,8 @@ async function onAuth(u){
     if(isAdmin)unRegs=BE.watchRegs(r=>{regs=r;if(ready&&syncRegs())save();renderKeep()});
   }
   if(isAdmin&&cloud()&&ready&&stateMissing){stateMissing=false;save(true)}
+  if(isAdmin&&cloud()&&ready&&!metaSynced){metaSynced=true;save(true)}
+  ensureChat();
   if(!allowedTabs().includes(tab))tab=allowedTabs()[0];
   render();
 }

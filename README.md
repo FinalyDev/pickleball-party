@@ -45,6 +45,13 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 - 16 players fills 4 courts, 12 fills 3. With 13–15, 1–3 people sit out each round.
 - The leaderboard ranks by win rate, then point difference, so sitting out never hurts anyone.
 
+## Event chat
+
+- Everyone signed in can read the **Chat** tab; registered players and you can post. Your messages show a **Host** tag.
+- A red badge on the Chat tab shows unread messages.
+- People can delete their own messages, and you can delete any message.
+- **Clear chat** (on the Chat tab) or **Reset everything** (in Setup) starts a fresh, empty chat. Turn it off anytime with **Event chat on** in Setup.
+
 ## Good to know
 
 - Players can edit or cancel their own registration while registration is open.
