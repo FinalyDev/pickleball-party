@@ -257,6 +257,8 @@ footer{max-width:1100px;margin:0 auto;padding:4px 16px 28px;color:var(--muted);f
 .bringlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .bringlist li{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;background:var(--surface-2);border-radius:10px}
 .bringlist li span{text-align:right;color:var(--muted)}
+.bringlist.small li{padding:6px 10px;font-size:14px}
+.already{display:grid;gap:6px;margin-top:-4px}
 .mrow.win .tn:has(.pchips)::after{content:none}
 .mrow.win{background:color-mix(in srgb,var(--good) 10%,transparent)}
 .pchips.tight{gap:4px;margin:0}
@@ -358,6 +360,14 @@ const roundDone = r => !!r && r.games.every(winSide);
 function courtPlan(n){const c=Math.max(1,parseInt(S.event.courts)||1),playing=Math.min(c*4,Math.floor(n/4)*4);return {playing,courts:playing/4,sit:n-playing}}
 const sitWord = () => S.event.sitKids?'Sitting out to watch the kids’ zone':'Sitting out';
 const BRING_TAG='Bringing: ';
+let liveBring=null; // live public list from Firestore (null until the rules allow it)
+function bringList(){
+  const m=new Map();
+  (S.bringing||[]).forEach(x=>m.set(x.uid||('n:'+x.name),x));
+  if(liveBring)liveBring.forEach(x=>m.set(x.uid,x));
+  return [...m.values()].filter(x=>x.item).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function bringUL(list,small){return `<ul class="bringlist ${small?'small':''}">${list.map(x=>`<li><b>${esc(x.name)}</b><span>${esc(x.item)}</span></li>`).join('')}</ul>`}
 function regBring(r){if(!r)return '';if(r.bring)return r.bring;const n=r.note||'';if(n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?n.slice(BRING_TAG.length):n.slice(BRING_TAG.length,k)}return ''}
 function regNote(r){if(!r)return '';const n=r.note||'';if(!r.bring&&n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?'':n.slice(k+3)}return n}
 const champGame = () => {for(const r of S.rounds)for(const g of r.games)if(g.champ)return g;return null};
@@ -423,7 +433,7 @@ function syncRegs(){
       else{if(p.name!==n){p.name=n;ch=true}if(p.group!==grp){p.group=grp;ch=true}}
     });
   });
-  const list=regs.filter(r=>regBring(r)).map(r=>({name:[r.name,r.partner].filter(Boolean).join(' & '),item:regBring(r)})).sort((a,b)=>a.name.localeCompare(b.name));
+  const list=regs.filter(r=>regBring(r)).map(r=>({uid:r.id,name:[r.name,r.partner].filter(Boolean).join(' & '),item:regBring(r)})).sort((a,b)=>a.name.localeCompare(b.name));
   if(JSON.stringify(list)!==JSON.stringify(S.bringing||[])){S.bringing=list;ch=true}
   const before=S.players.length;
   S.players=S.players.filter(p=>p.src!=='reg'||live.has(p.id));
@@ -548,13 +558,14 @@ function vRegister(){
       <small style="margin-top:-6px">Everyone gets a new partner every game.</small>
       <label>Kids coming (not playing)<input data-form="kids" type="number" min="0" max="10" inputmode="numeric" value="${esc(f.kids)}"></label>
       <label>What are you bringing? (optional)<input data-form="bring" maxlength="100" value="${esc(f.bring)}" placeholder="Chips, a dessert, drinks…"></label>
+      ${(()=>{const others=bringList().filter(x=>x.uid!==user.uid);return others.length?`<div class="already"><small>Already coming, so pick something different:</small>${bringUL(others,true)}</div>`:''})()}
       <label>Note for the organizer (optional)<input data-form="note" maxlength="200" value="${esc(f.note)}" placeholder="Allergies, arriving late, etc."></label>
       <div class="row"><button class="btn primary big" type="submit" ${ui.busy?'disabled':''}>${myReg?'Save changes':'Register'}</button>${myReg?'<button class="btn" type="button" data-action="cancelEdit">Cancel</button>':''}</div>
       <small>Signed in as ${esc(user.email)}</small>
     </form></section>`;
   }
-  const bl=S.bringing||[];
-  const bring=bl.length?`<section class="card"><h2>What people are bringing</h2><ul class="bringlist">${bl.map(x=>`<li><b>${esc(x.name)}</b><span>${esc(x.item)}</span></li>`).join('')}</ul></section>`:'';
+  const bl=bringList();
+  const bring=`<section class="card"><h2>What people are bringing</h2>${bl.length?bringUL(bl):'<p class="muted" style="margin:0">Nothing yet. Be the first to add something when you register.</p>'}</section>`;
   return hero+body+bring+how;
 }
 
@@ -758,7 +769,7 @@ document.addEventListener('click',async e=>{
     case 'signout':try{await BE.signOut()}catch(err){}return;
     case 'editReg':ui.editing=true;ui.form=null;render();return;
     case 'cancelEdit':ui.editing=false;ui.form=null;render();return;
-    case 'cancelReg':if(!confirm('Cancel your registration?'))return;try{await BE.deleteMyReg(user.uid);ui.form=null;toast('Registration cancelled')}catch(err){toast('Could not cancel: '+(err.code||err.message))}return;
+    case 'cancelReg':if(!confirm('Cancel your registration?'))return;try{await BE.deleteMyReg(user.uid);Promise.resolve(BE.setMyBringing(user.uid,{item:''})).catch(()=>{});ui.form=null;toast('Registration cancelled')}catch(err){toast('Could not cancel: '+(err.code||err.message))}return;
     case 'copyLink':{const link=location.origin+location.pathname;if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(link).then(()=>toast('Site link copied'),()=>prompt('Copy this link:',link));else prompt('Copy this link:',link);return}
   }
   if(!isAdmin)return;
@@ -766,7 +777,7 @@ document.addEventListener('click',async e=>{
     case 'addPlayers':{const t=$('#bulk').value;if(!t.trim()){toast('Type some names first');return}ui.bulk='';addPlayers(t);break}
     case 'sample':addPlayers(SAMPLE.join('\n'));break;
     case 'delPlayer':{const p=P(id);if(S.rounds.some(r=>r.games.some(g=>g.a.concat(g.b).includes(id)))&&!confirm(`Remove ${p.name}? Their past games stay on the record. To just stop scheduling them, untick Playing instead.`))return;S.players=S.players.filter(x=>x.id!==id);save();break}
-    case 'delReg':{const r=regs.find(x=>x.id===id);if(!confirm(`Remove ${r?r.name:'this'} registration? They can register again while sign-ups are open.`))return;try{await BE.deleteReg(id)}catch(err){toast('Could not remove: '+(err.code||err.message))}return}
+    case 'delReg':{const r=regs.find(x=>x.id===id);if(!confirm(`Remove ${r?r.name:'this'} registration? They can register again while sign-ups are open.`))return;try{await BE.deleteReg(id);Promise.resolve(BE.deleteBringing(id)).catch(()=>{})}catch(err){toast('Could not remove: '+(err.code||err.message))}return}
     case 'newRound':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Start the next round anyway?'))return;if(newRound(false))toast(`Round ${lastRound().n} is set`);break}
     case 'champRound':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Start the championship anyway?'))return;if(!confirm('Start the championship? The top 4 play #1 & #4 vs #2 & #3. Everyone else plays one more game.'))return;if(newRound(true))toast('Championship game is set');break}
     case 'reshuffle':{const r=lastRound();if(!r)return;S.rounds.pop();if(!newRound(!!r.final))S.rounds.push(r);else toast('Reshuffled');break}
@@ -801,6 +812,7 @@ document.addEventListener('submit',async e=>{
       if(!(err&&err.code==='permission-denied'&&S.event.regOpen))throw err;
       await BE.saveMyReg(user.uid,{...data,note:(bring?BRING_TAG+bring+(data.note?' · '+data.note:''):data.note).slice(0,200)},!myReg);
     }
+    Promise.resolve(BE.setMyBringing(user.uid,{name:[data.name,data.partner].filter(Boolean).join(' & '),item:bring})).catch(()=>{});
     ui.editing=false;ui.form=null;toast(myReg?'Changes saved':'You’re registered!');
   }
   catch(err){console.error(err);toast(err&&err.code==='permission-denied'?'Registration is closed':'Could not register: '+(err.code||err.message))}
@@ -841,7 +853,8 @@ function localBackend(){
     watchState(cb){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}cb(r);return()=>{}},
     async saveState(json){try{localStorage.setItem(KEY,json)}catch(e){}},
     watchMyReg(){return()=>{}},async saveMyReg(){},async deleteMyReg(){},
-    watchRegs(cb){cb([]);return()=>{}},async deleteReg(){}
+    watchRegs(cb){cb([]);return()=>{}},async deleteReg(){},
+    watchBringing(cb){cb(null);return()=>{}},async setMyBringing(){},async deleteBringing(){}
   };
 }
 async function firebaseBackend(cfg){
@@ -871,7 +884,10 @@ async function firebaseBackend(cfg){
     },
     deleteMyReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
     watchRegs(cb){return F.onSnapshot(F.collection(db,'registrations'),qs=>cb(qs.docs.map(d=>({id:d.id,...d.data()}))),e=>console.error(e))},
-    deleteReg(id){return F.deleteDoc(F.doc(db,'registrations',id))}
+    deleteReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
+    watchBringing(cb){return F.onSnapshot(F.collection(db,'bringing'),qs=>cb(qs.docs.map(d=>({uid:d.id,name:d.data().name,item:d.data().item}))),()=>cb(null))},
+    setMyBringing(id,b){const ref=F.doc(db,'bringing',id);return b.item?F.setDoc(ref,{name:String(b.name||'').slice(0,90),item:String(b.item).slice(0,100),updatedAt:F.serverTimestamp()}):F.deleteDoc(ref)},
+    deleteBringing(id){return F.deleteDoc(F.doc(db,'bringing',id))}
   };
 }
 
@@ -903,6 +919,7 @@ async function onAuth(u){
   }
   if(!tab)tab=BE.mode==='local'?'setup':'register';
   BE.watchState(onState);
+  if(BE.watchBringing)BE.watchBringing(list=>{liveBring=list;if(ready)renderKeep()});
   BE.init(onAuth);
 })();
 </script>
