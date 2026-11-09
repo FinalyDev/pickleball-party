@@ -254,6 +254,9 @@ footer{max-width:1100px;margin:0 auto;padding:4px 16px 28px;color:var(--muted);f
 @media print{header nav,.btn,footer,.acct{display:none}body{background:#fff}.card{box-shadow:none}}
 
 /* rotating partners */
+.bringlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.bringlist li{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;background:var(--surface-2);border-radius:10px}
+.bringlist li span{text-align:right;color:var(--muted)}
 .mrow.win .tn:has(.pchips)::after{content:none}
 .mrow.win{background:color-mix(in srgb,var(--good) 10%,transparent)}
 .pchips.tight{gap:4px;margin:0}
@@ -311,7 +314,7 @@ const ICONS = {
 };
 const SAMPLE = ['Eddie + Jess','Marco + Lina','Sam + Priya','Dave + Kim','Tony + Grace','Ben + Chloe','Ray','Mia','Josh','Ana'];
 
-function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',notes:'Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,prizes:{champ:'Trophy + gift card each',runner:'Gift card each'}},players:[],rounds:[]}}
+function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',notes:'Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,prizes:{champ:'Trophy + gift card each',runner:'Gift card each'}},players:[],rounds:[],bringing:[]}}
 function normalize(d){
   const b=blank();d=Object.assign(b,d||{});
   d.event=Object.assign(blank().event,d.event||{});
@@ -320,6 +323,7 @@ function normalize(d){
   ['pools','funNames','payInfo','fee'].forEach(k=>delete d.event[k]);
   if(!Array.isArray(d.players))d.players=[];
   if(!Array.isArray(d.rounds))d.rounds=[];
+  if(!Array.isArray(d.bringing))d.bringing=[];
   return d;
 }
 
@@ -353,6 +357,9 @@ function winSide(g){if(!g||g.sa==null||g.sb==null||g.sa===g.sb)return null;retur
 const roundDone = r => !!r && r.games.every(winSide);
 function courtPlan(n){const c=Math.max(1,parseInt(S.event.courts)||1),playing=Math.min(c*4,Math.floor(n/4)*4);return {playing,courts:playing/4,sit:n-playing}}
 const sitWord = () => S.event.sitKids?'Sitting out to watch the kids’ zone':'Sitting out';
+const BRING_TAG='Bringing: ';
+function regBring(r){if(!r)return '';if(r.bring)return r.bring;const n=r.note||'';if(n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?n.slice(BRING_TAG.length):n.slice(BRING_TAG.length,k)}return ''}
+function regNote(r){if(!r)return '';const n=r.note||'';if(!r.bring&&n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?'':n.slice(k+3)}return n}
 const champGame = () => {for(const r of S.rounds)for(const g of r.games)if(g.champ)return g;return null};
 
 /* ---------- stats ---------- */
@@ -416,6 +423,8 @@ function syncRegs(){
       else{if(p.name!==n){p.name=n;ch=true}if(p.group!==grp){p.group=grp;ch=true}}
     });
   });
+  const list=regs.filter(r=>regBring(r)).map(r=>({name:[r.name,r.partner].filter(Boolean).join(' & '),item:regBring(r)})).sort((a,b)=>a.name.localeCompare(b.name));
+  if(JSON.stringify(list)!==JSON.stringify(S.bringing||[])){S.bringing=list;ch=true}
   const before=S.players.length;
   S.players=S.players.filter(p=>p.src!=='reg'||live.has(p.id));
   if(S.players.length!==before)ch=true;
@@ -526,24 +535,27 @@ function vRegister(){
     const names=[myReg.name,myReg.partner].filter(Boolean);
     body=`<section class="card"><h2>You're registered</h2>
       <div class="status"><span class="pill ok">Registered</span></div>
-      <table><tbody><tr><th>Playing</th><td>${names.map(esc).join(' & ')}</td></tr><tr><th>Kids coming</th><td>${esc(myReg.kids||0)}</td></tr>${myReg.note?`<tr><th>Note</th><td>${esc(myReg.note)}</td></tr>`:''}</tbody></table>
+      <table><tbody><tr><th>Playing</th><td>${names.map(esc).join(' & ')}</td></tr><tr><th>Kids coming</th><td>${esc(myReg.kids||0)}</td></tr>${regBring(myReg)?`<tr><th>Bringing</th><td>${esc(regBring(myReg))}</td></tr>`:''}${regNote(myReg)?`<tr><th>Note</th><td>${esc(regNote(myReg))}</td></tr>`:''}</tbody></table>
       <p class="muted">You'll get a new partner every game. On the day, open <b>My games</b> to see your court.</p>
       <div class="row" style="margin-top:12px">${e.regOpen?'<button class="btn" data-action="editReg">Edit</button>':''}<button class="btn danger" data-action="cancelReg">Cancel registration</button></div></section>`;
   } else if(!e.regOpen&&!myReg){
     body=`<section class="card"><h2>Registration is closed</h2><p class="muted">Reach out to the organizer if you still want to play.</p></section>`;
   } else {
-    const f=ui.form||(ui.form={name:myReg?myReg.name:(user.displayName||''),partner:myReg?myReg.partner||'':'',kids:myReg?myReg.kids||0:0,note:myReg?myReg.note||'':''});
+    const f=ui.form||(ui.form={name:myReg?myReg.name:(user.displayName||''),partner:myReg?myReg.partner||'':'',kids:myReg?myReg.kids||0:0,note:myReg?regNote(myReg):'',bring:myReg?regBring(myReg):''});
     body=`<section class="card"><h2>${myReg?'Edit registration':'Register'}</h2><form class="form" data-form-root>
       <label>Your name<input data-form="name" maxlength="40" required value="${esc(f.name)}" autocomplete="name"></label>
       <label>Spouse or friend also playing (optional)<input data-form="partner" maxlength="40" value="${esc(f.partner)}" placeholder="Leave blank if just you"></label>
       <small style="margin-top:-6px">Everyone gets a new partner every game.</small>
       <label>Kids coming (not playing)<input data-form="kids" type="number" min="0" max="10" inputmode="numeric" value="${esc(f.kids)}"></label>
+      <label>What are you bringing? (optional)<input data-form="bring" maxlength="100" value="${esc(f.bring)}" placeholder="Chips, a dessert, drinks…"></label>
       <label>Note for the organizer (optional)<input data-form="note" maxlength="200" value="${esc(f.note)}" placeholder="Allergies, arriving late, etc."></label>
       <div class="row"><button class="btn primary big" type="submit" ${ui.busy?'disabled':''}>${myReg?'Save changes':'Register'}</button>${myReg?'<button class="btn" type="button" data-action="cancelEdit">Cancel</button>':''}</div>
       <small>Signed in as ${esc(user.email)}</small>
     </form></section>`;
   }
-  return hero+body+how;
+  const bl=S.bringing||[];
+  const bring=bl.length?`<section class="card"><h2>What people are bringing</h2><ul class="bringlist">${bl.map(x=>`<li><b>${esc(x.name)}</b><span>${esc(x.item)}</span></li>`).join('')}</ul></section>`:'';
+  return hero+body+bring+how;
 }
 
 function vSetup(){
@@ -591,7 +603,7 @@ function vPlayers(){
   const kids=kidsTotal(),all=S.players.length,n=active().length,cp=courtPlan(n);
   const regRows=regs.slice().sort((a,b)=>((a.createdAt&&a.createdAt.seconds)||0)-((b.createdAt&&b.createdAt.seconds)||0));
   const regCard=cloud()?`<section class="card"><div class="spread" style="margin-bottom:12px"><h2 style="margin:0">Registrations (${regs.length})</h2><span class="pill ${S.event.regOpen?'ok':''}">${S.event.regOpen?'Open':'Closed'}</span></div>
-    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>`<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td><small>${esc(r.note||'')}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
+    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th>Bringing</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>`<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td><small>${esc(regBring(r))}</small></td><td><small>${esc(regNote(r))}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
   </section>`:'';
   return `
   <div class="stats"><div class="stat"><b>${all}</b><span>Players</span></div><div class="stat"><b>${kids}</b><span>Kids</span></div><div class="stat"><b>${all+kids}</b><span>Total guests</span></div></div>
@@ -687,7 +699,7 @@ function vRules(){
   const sec=(t,body)=>`<section class="card rules"><h2>${t}</h2>${body}</section>`;
   return `<section class="card hero"><h2>Pickleball in 2 minutes</h2><p style="margin-top:0">It's like tennis on a badminton-size court with paddles and a plastic ball. Always doubles tonight: 2 vs 2.</p></section>`
   +sec('Tonight’s game',`<ul class="howlist"><li><b>First to 11.</b> Every rally scores a point, no matter who served.</li><li><b>Time cap: ${m} minutes.</b> When time's up, finish the rally. Whoever is ahead wins. Tied? Play one more rally.</li><li><b>New partner every game.</b> Check <b>Now playing</b> for your court.</li><li><b>Report your score</b> to the organizer when your game ends.</li></ul>`)
-  +sec('Serving',`<ol class="rlist"><li>Serve <b>underhand</b>: hit the ball below your waist with an upward swing. Dropping the ball and hitting it after one bounce is fine.</li><li>Stand behind the back line and serve <b>diagonally</b> into the box across from you.</li><li>The serve has to clear the <b>kitchen</b> (the zone by the net) and land in that box.</li><li><b>Call the score</b> before you serve: your team's score, then theirs. Example: “5–3”.</li><li>Win the rally on your serve? You score, and you switch sides with your partner and serve again. Lose it? The other team scores and gets the serve.</li></ol>`)
+  +sec('Serving',`<ol class="rlist"><li>Serve <b>underhand</b>: hit the ball below your waist with an upward swing. Dropping the ball and hitting it after one bounce is fine.</li><li>Stand behind the back line and serve <b>diagonally</b> into the box across from you. It has to clear the <b>kitchen</b> (the zone by the net).</li><li><b>Call the score</b> before you serve: your team's score, the other team's score, then your server number (1 or 2). Example: “5–3–1”.</li><li><b>Win the rally on your serve?</b> You score, switch sides with your partner, and keep serving.</li><li><b>Lose the rally on your serve?</b> The other team scores, and your <b>partner serves next</b>.</li><li><b>Both of you lost a serve?</b> Now the serve goes to the other team (a “side out”), and they get two servers too.</li><li><b>Start of the game:</b> the first team to serve gets only <b>one</b> server, so the very first call is “0–0–2”.</li></ol>`)
   +sec('The two-bounce rule',`<p>After the serve, the ball has to <b>bounce once on each side</b> before anyone hits it out of the air.</p><p class="muted">So: serve → it bounces → they return it → it bounces → now anything goes.</p>`)
   +sec('The kitchen',`<p>The <b>kitchen</b> is the 7-foot zone on each side of the net. You <b>can't volley</b> (hit the ball out of the air) while standing in it or on its line.</p><p class="muted">You can step in to hit a ball that has bounced. Just step back out after.</p>`)
   +sec('You lose the rally if…',`<ul class="howlist"><li>The ball lands out of bounds or goes into the net.</li><li>It bounces twice on your side.</li><li>You volley while in the kitchen.</li><li>You hit it out of the air before the two bounces are done.</li></ul><p class="muted" style="margin:8px 0 0">Ball on the line? It's <b>in</b>. The one exception: a serve that lands on the kitchen line is out.</p>`)
@@ -781,7 +793,16 @@ document.addEventListener('submit',async e=>{
   if(!name){toast('Please enter your name');return}
   const kids=Math.max(0,Math.min(10,parseInt(f.kids,10)||0));
   ui.busy=true;render();
-  try{await BE.saveMyReg(user.uid,{name:name.slice(0,40),partner:partner.slice(0,40),kids,note:String(f.note||'').trim().slice(0,200)},!myReg);ui.editing=false;ui.form=null;toast(myReg?'Changes saved':'You’re registered!')}
+  const data={name:name.slice(0,40),partner:partner.slice(0,40),kids,note:String(f.note||'').trim().slice(0,200)},bring=String(f.bring||'').trim().slice(0,100);
+  try{
+    try{await BE.saveMyReg(user.uid,{...data,bring},!myReg)}
+    catch(err){
+      // Older security rules don't know the "bring" field yet: store it inside the note instead.
+      if(!(err&&err.code==='permission-denied'&&S.event.regOpen))throw err;
+      await BE.saveMyReg(user.uid,{...data,note:(bring?BRING_TAG+bring+(data.note?' · '+data.note:''):data.note).slice(0,200)},!myReg);
+    }
+    ui.editing=false;ui.form=null;toast(myReg?'Changes saved':'You’re registered!');
+  }
   catch(err){console.error(err);toast(err&&err.code==='permission-denied'?'Registration is closed':'Could not register: '+(err.code||err.message))}
   ui.busy=false;render();
 });
