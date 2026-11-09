@@ -42,7 +42,7 @@ The values in `firebase-config.js` are meant to be public. Security comes from t
 2. In **Setup**, fill in the date, time, location, cost and the notes for players (food, potluck or what's included). Leave **Registration open** on.
 3. Copy the site link and send it to everyone. They tap **Sign in with Google to register**.
 4. Check **Players** as people sign up: emails, kids count, paid checkboxes, money collected and total guest count. Add walk-ins there too.
-5. On the day: close registration, **Teams & Pools** → Draw teams → Draw pools → Reveal teams one by one → Generate schedule. Then turn on **Show teams, schedule and results** in Setup.
+5. On the day: close registration, **Teams & Pools** → Draw teams → Draw pools. If a team looks unbalanced, tap a player, then tap another player to swap them. Then Reveal teams one by one → Generate schedule. Then turn on **Show teams, schedule and results** in Setup.
 6. Run rounds from **Now playing**: enter scores as games finish, and seed the brackets after pool play.
 
 ## Good to know

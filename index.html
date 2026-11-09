@@ -130,6 +130,16 @@ tr.mine td{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .team input{padding:6px 9px;font-weight:600}
 .team select{padding:5px 8px}
 
+/* team swapping */
+.pchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pchip{border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;font-weight:600;font-size:14px;cursor:pointer;touch-action:manipulation}
+.pchip.empty{border-style:dashed;color:var(--muted);background:transparent}
+.pchip.on{background:var(--brand);color:var(--brand-ink);border-color:transparent}
+.pchip.target{border-color:var(--brand);border-style:dashed}
+.warnline{display:block;margin-top:4px;color:var(--warn);font-weight:600}
+.swapcard{padding:12px 16px;font-size:14px}
+.swapcard.active{position:sticky;top:8px;z-index:15;background:var(--accent);color:var(--accent-ink);border-color:transparent}
+
 /* matches */
 .round{margin-bottom:18px}
 .round h3{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -283,7 +293,7 @@ let S = blank();
 let BE = null, user = null, isAdmin = false, regs = [], myReg = null, ready = false;
 let unRegs = null, unMy = null;
 let tab = null; try{tab=localStorage.getItem(KEY+':tab')}catch(e){}
-const ui = {reveal:null, lastWinner:null, form:null, editing:false, bulk:'', busy:false};
+const ui = {swap:null,reveal:null, lastWinner:null, form:null, editing:false, bulk:'', busy:false};
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -390,6 +400,22 @@ function drawTeams(){
   for(let i=0;i<best.length;i+=2){S.teams.push({id:uid(),name:names[i/2]||('Team '+(i/2+1)),p1:best[i].id,p2:best[i+1]?best[i+1].id:null,pool:null})}
   S.games=[];S.bracket=null;save();
   toast(bestBad?bestBad+' couple(s) could not be split':S.teams.length+' teams drawn');
+}
+function coupled(t){const a=P(t.p1),b=P(t.p2);return !!(a&&b&&a.group&&b.group&&a.group.toLowerCase()===b.group.toLowerCase())}
+function swapPick(teamId,slot){
+  const cur=ui.swap;
+  if(!cur){const t=T(teamId);if(!t||!t[slot])return;ui.swap={team:teamId,slot};return}
+  if(cur.team===teamId&&cur.slot===slot){ui.swap=null;return}
+  const a=T(cur.team),b=T(teamId);if(!a||!b){ui.swap=null;return}
+  if(a===b){ui.swap=null;return}
+  const played=S.games.some(g=>winner(g)&&[a.id,b.id].some(id=>g.t1===id||g.t2===id))||(S.bracket&&allGames().some(g=>winner(g)&&[a.id,b.id].some(id=>g.t1===id||g.t2===id)));
+  if(played&&!confirm('These teams already have scores. Swap anyway? Past results stay with the team names.')){ui.swap=null;return}
+  const pa=a[cur.slot],pb=b[slot];a[cur.slot]=pb||null;b[slot]=pa;
+  [a,b].forEach(t=>{if(!t.p1&&t.p2){t.p1=t.p2;t.p2=null}});
+  const na=(P(pa)||{}).name,nb=pb?(P(pb)||{}).name:null;
+  ui.swap=null;save();
+  toast(nb?`Swapped ${na} and ${nb}`:`Moved ${na}`);
+  if(coupled(a)||coupled(b))setTimeout(()=>toast('Heads up: a couple is now on the same team'),2900);
 }
 function drawPools(){
   if(!S.teams.length){toast('Draw teams first');return}
@@ -615,13 +641,18 @@ function vPlayers(){
 
 function vTeams(){
   const n=poolCount(),pools=Array.from({length:n},(_,i)=>POOL(i));
-  const teamRow=t=>`<div class="team"><div>${S.event.funNames?`<input data-tname="${t.id}" value="${esc(t.name)}" aria-label="Team name">`:`<span class="tn">${esc(members(t))}</span>`}${S.event.funNames?`<small style="display:block;margin-top:4px">${esc(members(t))}${t.p2?'':' (needs a partner)'}</small>`:''}</div><select data-tpool="${t.id}" aria-label="Pool"><option value="">–</option>${pools.map(p=>`<option ${t.pool===p?'selected':''}>${p}</option>`).join('')}</select></div>`;
+  const sel=ui.swap;
+  const chip=(t,slot)=>{const pid=t[slot];if(!pid)return `<button class="pchip empty ${sel?'target':''}" data-action="swapPick" data-team="${t.id}" data-slot="${slot}">${sel?'Move here':'Open spot'}</button>`;
+    const pl=P(pid),on=sel&&sel.team===t.id&&sel.slot===slot;return `<button class="pchip ${on?'on':''} ${sel&&!on?'target':''}" data-action="swapPick" data-team="${t.id}" data-slot="${slot}" aria-pressed="${on}">${esc(pl?pl.name:'?')}</button>`};
+  const teamRow=t=>`<div class="team"><div>${S.event.funNames?`<input data-tname="${t.id}" value="${esc(t.name)}" aria-label="Team name">`:''}<div class="pchips">${chip(t,'p1')}${chip(t,'p2')}</div>${coupled(t)?'<small class="warnline">Couple on the same team</small>':''}</div><select data-tpool="${t.id}" aria-label="Pool"><option value="">–</option>${pools.map(p=>`<option ${t.pool===p?'selected':''}>${p}</option>`).join('')}</select></div>`;
+  const swapBar=S.teams.length?`<section class="card swapcard ${sel?'active':''}">${sel?`<div class="spread"><span><b>${esc((P(T(sel.team)[sel.slot])||{}).name||'')}</b> selected. Tap the player to trade with.</span><button class="btn small" data-action="swapCancel">Cancel</button></div>`:'<span><b>Teams look unbalanced?</b> Tap a player, then tap another player to swap them.</span>'}</section>`:'';
   const unpooled=S.teams.filter(t=>!t.pool);
   return `
   <section class="card"><h2>Draw</h2>
     <div class="row"><button class="btn primary" data-action="drawTeams">${S.teams.length?'Redraw teams':'Draw teams'}</button><button class="btn primary" data-action="drawPools" ${S.teams.length?'':'disabled'}>${S.teams.some(t=>t.pool)?'Redraw pools':'Draw pools'}</button><button class="btn accent" data-action="reveal" ${S.teams.length?'':'disabled'}>Reveal teams one by one</button><button class="btn" data-action="genSchedule" ${S.teams.some(t=>t.pool)?'':'disabled'}>Generate schedule</button></div>
     <p class="muted" style="margin:10px 0 0">${S.teams.length} teams · ${n} pool${n===1?'':'s'}. ${S.event.published?'Players can see the teams.':'Players can’t see teams until you turn on “Show teams” in Setup.'}</p>
   </section>
+  ${swapBar}
   ${S.teams.length?`<div class="cols">${pools.map(p=>{const ts=S.teams.filter(t=>t.pool===p);return `<div class="pool"><h3>Pool ${p}<span class="pill">${ts.length} teams</span></h3>${ts.map(teamRow).join('')||'<div class="empty">Empty</div>'}</div>`}).join('')}${unpooled.length?`<div class="pool"><h3>No pool yet<span class="pill">${unpooled.length}</span></h3>${unpooled.map(teamRow).join('')}</div>`:''}</div>`:'<div class="card empty">Collect players, then draw teams.</div>'}`;
 }
 
@@ -805,6 +836,8 @@ document.addEventListener('click',async e=>{
     case 'drawTeams':drawTeams();break;
     case 'drawPools':drawPools();break;
     case 'genSchedule':genSchedule();break;
+    case 'swapPick':swapPick(a.dataset.team,a.dataset.slot);break;
+    case 'swapCancel':ui.swap=null;break;
     case 'reveal':ui.reveal=0;break;
     case 'nextReveal':ui.reveal++;break;
     case 'closeReveal':ui.reveal=null;break;
