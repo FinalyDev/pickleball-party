@@ -25,7 +25,7 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 1. Open the site and **sign in with your admin Gmail**. You'll see the Admin badge and the organizer tabs.
 2. In **Setup**, fill in the date, time, location and the notes for players (for example, "Pizza provided"). Leave **Registration open** on.
 3. Copy the site link and send it to everyone. They tap **Sign in with Google to register**. The **Rules** page is open to everyone, so beginners can read it ahead of time.
-4. Check **Players** as people sign up. Add walk-ins there too. Put couples on one line with a plus sign (`Eddie + Jess`) so they aren't paired as partners.
+4. Check **Players** as people sign up. Add walk-ins there too. Everyone sees a **Who's coming** list on the Event page with names only (no emails). New sign-ups show up there while you have the site open, so open it now and then. Put couples on one line with a plus sign (`Eddie + Jess`) so they aren't paired as partners.
 
 ## On the day
 
