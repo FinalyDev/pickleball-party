@@ -375,7 +375,7 @@ let S = blank();
 let BE = null, user = null, isAdmin = false, regs = [], myReg = null, ready = false;
 let unRegs = null, unMy = null;
 let tab = null; try{tab=localStorage.getItem(KEY+':tab')}catch(e){}
-const ui = {swap:null, form:null, editing:false, bulk:'', busy:false, rep:{}};
+const ui = {swap:null, form:null, editing:false, bulk:'', busy:false, rep:{}, regEdit:null};
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -785,7 +785,8 @@ function vPlayers(){
   const kids=kidsTotal(),all=S.players.length,n=active().length,cp=courtPlan(n),pad=paddlesTotal();
   const regRows=regs.slice().sort((a,b)=>((a.createdAt&&a.createdAt.seconds)||0)-((b.createdAt&&b.createdAt.seconds)||0));
   const regCard=cloud()?`<section class="card"><div class="spread" style="margin-bottom:12px"><h2 style="margin:0">Registrations (${regs.length})</h2><span class="pill ${S.event.regOpen?'ok':''}">${S.event.regOpen?'Open':'Closed'}</span></div>
-    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th class="num">Paddles</th><th>Level</th><th>Bringing</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>{const m=regMeta(r);return `<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td class="num">${m.paddles||''}</td><td><small>${[r.name,r.partner].filter(Boolean).map((x,i)=>SKILL_SHORT[m.skill[i]||0]).join(' / ')}</small></td><td><small>${esc(regBring(r))}</small></td><td><small>${esc(regNote(r))}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
+    ${(()=>{const ed=ui.regEdit,r=ed&&regs.find(x=>x.id===ed.id);if(!r)return '';return `<div class="card swapcard" style="margin-bottom:12px"><h3 style="margin:0 0 10px">Edit ${esc([r.name,r.partner].filter(Boolean).join(' & '))}</h3><div class="form"><label>Bringing (everyone sees this)<input data-redit="bring" maxlength="60" value="${esc(ed.bring)}" placeholder="Nothing"></label><label>Note (private: only you and they see it)<input data-redit="note" maxlength="120" value="${esc(ed.note)}"></label><div class="row"><button class="btn primary" data-action="saveRegAdmin" ${ui.busy?'disabled':''}>Save</button><button class="btn" data-action="cancelRegAdmin">Cancel</button></div></div></div>`})()}
+    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th class="num">Paddles</th><th>Level</th><th>Bringing</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>{const m=regMeta(r);return `<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}<br><button class="btn small" style="margin-top:6px" data-action="editRegAdmin" data-id="${esc(r.id)}" aria-label="Edit food and note for ${esc(r.name)}">Edit</button></td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td class="num">${m.paddles||''}</td><td><small>${[r.name,r.partner].filter(Boolean).map((x,i)=>SKILL_SHORT[m.skill[i]||0]).join(' / ')}</small></td><td><small>${esc(regBring(r))}</small></td><td><small>${esc(regNote(r))}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
   </section>`:'';
   return `
   <div class="stats"><div class="stat"><b>${all}</b><span>Players</span></div><div class="stat"><b>${kids}</b><span>Kids</span></div><div class="stat"><b>${all+kids}</b><span>Total guests</span></div>${cloud()?`<div class="stat"><b>${pad}</b><span>Paddles to bring</span></div>`:''}</div>
@@ -936,7 +937,7 @@ function renderNav(tabs){
   if(!isAdmin&&tabs.length>1){bn.hidden=false;bn.innerHTML=tabs.map(k=>`<button data-tab="${k}" class="${k===tab?'on':''}" ${k===tab?'aria-current="page"':''}><span class="ico"><svg ${ICON_ATTR}>${ICONS[k]||''}</svg>${badge(k)}</span><span>${BN_LABELS[k]||TAB_LABELS[k]}</span></button>`).join('')}
   else{bn.hidden=true;bn.innerHTML=''}
 }
-function focusKey(el){if(!el||!el.dataset)return null;for(const k of ['score','rep','bind','prize','pname','pgroup','pskill','form'])if(el.dataset[k]!=null)return `[data-${k}="${CSS.escape(el.dataset[k])}"]`;if(el.id)return '#'+CSS.escape(el.id);return null}
+function focusKey(el){if(!el||!el.dataset)return null;for(const k of ['score','rep','redit','bind','prize','pname','pgroup','pskill','form'])if(el.dataset[k]!=null)return `[data-${k}="${CSS.escape(el.dataset[k])}"]`;if(el.id)return '#'+CSS.escape(el.id);return null}
 function renderKeep(){
   const a=document.activeElement,k=focusKey(a);let s=null,e=null;try{s=a.selectionStart;e=a.selectionEnd}catch(x){}
   const open=[...document.querySelectorAll('details.past[open] summary b')].map(b=>b.textContent);
@@ -984,6 +985,19 @@ document.addEventListener('click',async e=>{
     case 'reshuffle':{const r=lastRound();if(!r)return;S.rounds.pop();if(!newRound(!!r.final))S.rounds.push(r);else toast('Reshuffled');break}
     case 'delRound':{const r=lastRound();if(!r)return;if(!confirm(`Delete ${r.final?'the championship round':'round '+r.n}${r.games.some(g=>g.sa!=null||g.sb!=null)?' and its scores':''}?`))return;S.rounds.pop();ui.swap=null;save(true);break}
     case 'swapPick':swapPick(a.dataset.pos);break;
+    case 'editRegAdmin':{const r=regs.find(x=>x.id===id);if(!r)return;ui.regEdit={id,bring:regBring(r),note:regNote(r)};render();const el=document.querySelector('[data-redit=bring]');if(el){el.scrollIntoView({block:'center'});el.focus({preventScroll:true})}return}
+    case 'cancelRegAdmin':ui.regEdit=null;break;
+    case 'saveRegAdmin':{
+      const ed=ui.regEdit,r=ed&&regs.find(x=>x.id===ed.id);if(!r){ui.regEdit=null;break}
+      const bring=String(ed.bring||'').replace(/[⟪⟫⟦⟧]/g,'').trim().slice(0,60),note=String(ed.note||'').replace(/^[⟪⟦]/,'').trim().slice(0,120);
+      const upd={note:(metaTag(regMeta(r))+(bring?'⟪'+bring+'⟫ ':'')+note).slice(0,200)};if(r.bring)upd.bring='';
+      ui.busy=true;render();
+      try{await BE.updateReg(r.id,upd);
+        // Their old item in the live list would override yours, so clear it; your saved copy shows instead.
+        Promise.resolve(BE.deleteBringing(r.id)).catch(()=>{});liveBring=liveBring&&liveBring.filter(x=>x.uid!==r.id);
+        ui.regEdit=null;toast('Saved')}
+      catch(err){console.error(err);toast('Could not save: '+(err.code||err.message))}
+      ui.busy=false;break}
     case 'approveRep':{const r=S.rounds[+a.dataset.ri],g=r&&r.games[+a.dataset.gi],rep=r&&g&&reportFor(r,g);if(!rep)return;g.sa=rep.sa;g.sb=rep.sb;save(true);Promise.resolve(BE.deleteReport(rep.id)).catch(()=>{});toast(`Court ${g.court}: ${rep.sa}–${rep.sb} saved`);break}
     case 'dismissRep':Promise.resolve(BE.deleteReport(id)).catch(()=>{});reports=reports.filter(x=>x.id!==id);break;
     case 'swapCancel':ui.swap=null;break;
@@ -1000,6 +1014,7 @@ document.addEventListener('input',e=>{
   const el=e.target;
   if(el.dataset.form!=null&&ui.form){ui.form[el.dataset.form]=el.value}
   if(el.id==='bulk')ui.bulk=el.value;
+  if(el.dataset.redit!=null&&ui.regEdit)ui.regEdit[el.dataset.redit]=el.value;
   if(el.dataset.rep!=null){const [k,sd]=el.dataset.rep.split('|');(ui.rep[k]=ui.rep[k]||{})[sd]=el.value}
   if(el.id==='chatInput'){chat.draft=el.value;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px'}
 });
@@ -1106,6 +1121,7 @@ async function firebaseBackend(cfg){
     deleteMyReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
     watchRegs(cb){return F.onSnapshot(F.collection(db,'registrations'),qs=>cb(qs.docs.map(d=>({id:d.id,...d.data()}))),e=>console.error(e))},
     deleteReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
+    updateReg(id,d){return F.updateDoc(F.doc(db,'registrations',id),{...d,updatedAt:F.serverTimestamp()})},
     watchBringing(cb){return F.onSnapshot(F.collection(db,'bringing'),qs=>cb(qs.docs.map(d=>({uid:d.id,name:d.data().name,item:d.data().item}))),()=>cb(null))},
     setMyBringing(id,b){const ref=F.doc(db,'bringing',id);return b.item?F.setDoc(ref,{name:String(b.name||'').slice(0,90),item:String(b.item).slice(0,100),updatedAt:F.serverTimestamp()}):F.deleteDoc(ref)},
     deleteBringing(id){return F.deleteDoc(F.doc(db,'bringing',id))},
