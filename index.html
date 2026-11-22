@@ -366,7 +366,7 @@ const ICONS = {
 };
 const SAMPLE = ['Eddie + Jess','Marco + Lina','Sam + Priya','Dave + Kim','Tony + Grace','Ben + Chloe','Ray','Mia','Josh','Ana'];
 
-function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',address:'16333 Fairfield Ranch Rd, Chino Hills, CA 91709',directions:'Build Pickleball is inside the Big League Dreams sports park. Park in the Big League Dreams lot.',selfScore:true,notes:'Pizza provided. Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,chatOn:true,finished:false,prizes:{first:'Trophy + prize',second:'Prize',third:'Prize'}},players:[],rounds:[],bringing:[],chatEpoch:'main'}}
+function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',address:'16333 Fairfield Ranch Rd, Chino Hills, CA 91709',directions:'Build Pickleball is inside the Big League Dreams sports park. Park in the Big League Dreams lot.',selfScore:true,minSit:2,album:'',notes:'Pizza provided. Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,chatOn:true,finished:false,prizes:{first:'Trophy + prize',second:'Prize',third:'Prize'}},players:[],rounds:[],bringing:[],chatEpoch:'main'}}
 function normalize(d){
   const b=blank();d=Object.assign(b,d||{});
   d.event=Object.assign(blank().event,d.event||{});
@@ -409,7 +409,10 @@ const lastRound = () => S.rounds[S.rounds.length-1]||null;
 const step = () => (parseFloat(S.event.minutes)||15)+3;
 function winSide(g){if(!g||g.sa==null||g.sb==null||g.sa===g.sb)return null;return g.sa>g.sb?'a':'b'}
 const roundDone = r => !!r && r.games.every(winSide);
-function courtPlan(n){const c=Math.max(1,parseInt(S.event.courts)||1),playing=Math.min(c*4,Math.floor(n/4)*4);return {playing,courts:playing/4,sit:n-playing}}
+// How many must sit out each round to watch the kids (only when that option is on).
+function minSit(){return S.event.sitKids?Math.max(0,Math.min(20,parseInt(S.event.minSit)||0)):0}
+function playCap(n,courts){let k=Math.min(courts*4,Math.floor(Math.max(0,n-minSit())/4)*4);if(k<4&&n>=4)k=Math.min(courts*4,4);return k}
+function courtPlan(n){const c=Math.max(1,parseInt(S.event.courts)||1),playing=playCap(n,c);return {playing,courts:playing/4,sit:n-playing}}
 const sitWord = () => S.event.sitKids?'Sitting out to watch the kids’ zone':'Sitting out';
 const BRING_TAG='Bringing: ';
 let liveBring=null; // live public list from Firestore (null until the rules allow it)
@@ -539,6 +542,8 @@ function rosterList(){
   if(user&&myReg&&!mine){const nm=[myReg.name,myReg.partner].map(x=>String(x||'').trim()).filter(Boolean);if(nm.length){n+=nm.length;out.push({name:nm.join(' & '),me:true})}}
   return {rows:out,count:n};
 }
+function albumUrl(){const u=String(S.event.album||'').trim();return /^https:\/\/\S+$/i.test(u)?u:''}
+function albumCard(){const u=albumUrl();if(!u)return '';return `<section class="card"><h2>Photos</h2><p class="muted" style="margin-top:0">Add your pictures to the shared album so everyone gets them.</p><a class="btn primary" href="${esc(u)}" target="_blank" rel="noopener">Open the shared album</a></section>`}
 function rosterCard(){
   const r=rosterList();
   return `<section class="card"><h2>Who's coming${r.count?` <span class="muted" style="font-weight:500">(${r.count} player${r.count===1?'':'s'})</span>`:''}</h2>${r.rows.length?`<ul class="roster">${r.rows.map(x=>`<li class="${x.me?'me':''}">${esc(x.name)}</li>`).join('')}</ul>`:'<p class="muted" style="margin:0">No one yet. Be the first to sign up.</p>'}</section>`;
@@ -577,7 +582,7 @@ function newRound(isFinal){
     champ={court:1,champ:true,a:[top[0],top[3]],b:[top[1],top[2]],sa:null,sb:null};
     pool=act.filter(id=>!top.includes(id));
   }
-  const cap=Math.max(0,Math.min((courts-(champ?1:0))*4,Math.floor(pool.length/4)*4));
+  const cap=Math.max(0,playCap(pool.length,courts-(champ?1:0)));
   const lastRi=S.rounds.length-1;
   const order=shuffle(pool).sort((x,y)=>{const a=st[x],b=st[y];return a.sit-b.sit||(a.lastSit===lastRi)-(b.lastSit===lastRi)||b.sched-a.sched});
   const sit=order.slice(0,pool.length-cap);
@@ -711,7 +716,7 @@ function vRegister(){
   const facts=[['When',when],e.location?['Where',e.location]:null].filter(Boolean);
   const cd=countdown();
   const hero=`<section class="card hero">${cd?`<div class="countdown">${cd}</div>`:''}<h2>${esc(e.name)}</h2><div class="facts">${facts.map(f=>`<div><b>${f[0]}</b>${esc(f[1])}</div>`).join('')}</div>${e.notes?`<p style="white-space:pre-line">${esc(e.notes)}</p>`:''}</section>`;
-  const how=`<section class="card"><h2>How it works</h2><ul class="howlist"><li><b>New partner every game.</b> You'll meet everyone. No need to bring a partner.</li><li><b>Short games.</b> First to 11, every rally scores, about ${esc(e.minutes)} minutes.</li><li><b>Everyone plays all night.</b> Wins and points add up on a live leaderboard.</li><li><b>Top 3 win.</b> Whoever scores the most total points takes 1st, 2nd and 3rd.</li></ul><p class="muted" style="margin:8px 0 0">New to pickleball? Perfect. This is built for beginners.</p><button class="btn" style="margin-top:12px" data-tab="rules">Read the rules (2 min)</button></section>`;
+  const how=`<section class="card"><h2>How it works</h2><ul class="howlist"><li><b>New partner every game.</b> You'll meet everyone. No need to bring a partner.</li><li><b>Short games.</b> First to 11, every rally scores, about ${esc(e.minutes)} minutes.</li>${e.sitKids&&minSit()?'<li><b>Take turns.</b> Each round a few players sit out and watch the kids’ zone. Everyone gets a turn.</li>':'<li><b>Everyone plays all night.</b> Wins and points add up on a live leaderboard.</li>'}<li><b>Top 3 win.</b> Whoever scores the most total points takes 1st, 2nd and 3rd.</li></ul><p class="muted" style="margin:8px 0 0">New to pickleball? Perfect. This is built for beginners.</p><button class="btn" style="margin-top:12px" data-tab="rules">Read the rules (2 min)</button></section>`;
   let body='';
   if(!cloud()){
     body=`<section class="card"><h2>Registration</h2><div class="banner">Registration and Google sign-in turn on once Firebase is set up (see the README). Right now you're in local organizer mode.</div></section>`;
@@ -751,7 +756,7 @@ function vRegister(){
   const there=(e.location||e.address)?`<section class="card"><h2>Getting there</h2><p style="margin-top:0"><b>${esc(e.location)}</b>${e.address?'<br>'+esc(e.address):''}</p>${e.directions?`<p class="muted" style="white-space:pre-line">${esc(e.directions)}</p>`:''}<div class="row"><a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=${mq}" target="_blank" rel="noopener">Google Maps</a><a class="btn" href="https://maps.apple.com/?q=${mq}" target="_blank" rel="noopener">Apple Maps</a></div></section>`:'';
   const bl=bringList();
   const bringCard=bl.length?`<section class="card"><h2>Who's bringing what</h2>${bringUL(bl)}</section>`:'';
-  return hero+body+rosterCard()+bringCard+there+how;
+  return hero+body+rosterCard()+bringCard+there+albumCard()+how;
 }
 
 function vSetup(){
@@ -780,6 +785,7 @@ function vSetup(){
     <label>End time<input type="time" step="900" data-bind="end" value="${esc(e.end)}"></label>
     <label>Location<input data-bind="location" value="${esc(e.location)}"></label>
     <label>Address (for the map buttons)<input data-bind="address" value="${esc(e.address)}"></label>
+    <label style="grid-column:1/-1">Shared photo album link (Google Photos, iCloud, etc.)<input data-bind="album" type="url" inputmode="url" placeholder="https://photos.app.goo.gl/…" value="${esc(e.album)}"></label>
     <label style="grid-column:1/-1">Directions and parking<textarea data-bind="directions" rows="2" style="min-height:64px">${esc(e.directions)}</textarea></label>
     <label style="grid-column:1/-1">Notes for players (food, what's included)<textarea data-bind="notes" rows="4" style="min-height:96px">${esc(e.notes)}</textarea></label>
   </div></section>
@@ -788,7 +794,8 @@ function vSetup(){
     <label>Minutes per game<input type="number" min="5" max="30" data-bind="minutes" value="${esc(e.minutes)}"></label>
     <label>Rounds<input type="number" min="1" max="20" data-bind="rounds" value="${esc(e.rounds)}"></label>
     <label class="check" style="grid-column:1/-1"><input type="checkbox" data-bind="sitKids" ${e.sitKids?'checked':''}> Players sitting out watch the kids’ zone</label>
-  </div><p class="muted" style="margin:10px 0 0">${n?`${n} playing → ${cp.courts} court${cp.courts===1?'':'s'} in use${cp.sit?`, ${cp.sit} sit${cp.sit===1?'s':''} out each round (it rotates)`:', nobody sits out'}. `:''}${target} rounds ≈ ${target*step()} min of play.</p></section>
+    ${e.sitKids?`<label>At least this many sit out each round to watch the kids<input type="number" min="0" max="20" data-bind="minSit" value="${esc(e.minSit)}"></label>`:''}
+  </div><p class="muted" style="margin:10px 0 0">${n?`${n} playing → ${cp.courts} court${cp.courts===1?'':'s'} in use${cp.sit?`, ${cp.sit} sit${cp.sit===1?'s':''} out each round (it rotates)`:', nobody sits out'}. Over ${target} rounds, each player gets about ${Math.round(target*cp.playing/Math.max(1,n)*10)/10} games. `:''}${target} rounds ≈ ${target*step()} min of play.</p></section>
   <section class="card"><h2>Prizes</h2><div class="grid2">
     <label>1st place<input data-prize="first" value="${esc(e.prizes.first)}"></label>
     <label>2nd place<input data-prize="second" value="${esc(e.prizes.second)}"></label>
@@ -907,7 +914,7 @@ function vBoard(){
     champ=`<section class="card champcard"><small>Winners</small>${rk.slice(0,3).map((x,i)=>`<div class="win${i}"><span class="medal m${i+1}">${i+1}</span> <b>${esc(nm(x.id))}</b> <em>${x.PF} pts</em>${pl[i][1]?`<div class="pz">${esc(pl[i][1])}</div>`:''}</div>`).join('')}</section>`}
   if(!rk.length)return champ+'<section class="card empty">The leaderboard fills in as scores come in.</section>';
   const rows=rk.map((x,i)=>{const d=x.PF-x.PA;return `<tr class="${mine.has(x.id)?'mine':''} ${i===3&&!done?'cutline':''}"><td>${i<3?`<span class="medal m${i+1}">${i+1}</span>`:`<span class="place">${i+1}</span>`}</td><td><b>${esc(nm(x.id))}</b></td><td class="num"><b>${x.PF}</b></td><td class="num">${x.W}–${x.L}</td><td class="num">${d>0?'+':''}${d}</td></tr>`}).join('');
-  return `${champ}<section class="card"><div class="spread" style="margin-bottom:8px"><h2 style="margin:0">Leaderboard</h2>${done?'<span class="pill ok">Final</span>':'<span class="pill">Top 3 win prizes</span>'}</div><table class="lb"><thead><tr><th></th><th>Player</th><th class="num">Pts</th><th class="num">W–L</th><th class="num">+/−</th></tr></thead><tbody>${rows}</tbody></table><p class="muted" style="margin:10px 0 0;font-size:12.5px">Ranked by total points scored, then wins, then point difference.</p></section>`;
+  return `${champ}<section class="card"><div class="spread" style="margin-bottom:8px"><h2 style="margin:0">Leaderboard</h2>${done?'<span class="pill ok">Final</span>':'<span class="pill">Top 3 win prizes</span>'}</div><table class="lb"><thead><tr><th></th><th>Player</th><th class="num">Pts</th><th class="num">W–L</th><th class="num">+/−</th></tr></thead><tbody>${rows}</tbody></table><p class="muted" style="margin:10px 0 0;font-size:12.5px">Ranked by total points scored, then wins, then point difference.</p></section>${albumCard()}`;
 }
 
 function vRules(){

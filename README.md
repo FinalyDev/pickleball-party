@@ -23,7 +23,7 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 ## Before the day
 
 1. Open the site and **sign in with your admin Gmail**. You'll see the Admin badge and the organizer tabs.
-2. In **Setup**, fill in the date (the Event page then shows a countdown), time, location, address and parking directions (used for the Google and Apple Maps buttons), and the notes for players (for example, "Pizza provided"). Leave **Registration open** on.
+2. In **Setup**, add a **Shared photo album link** (a Google Photos or iCloud shared album) if you want one. It shows as a Photos button on the Event page and Leaderboard. Fill in the date (the Event page then shows a countdown), time, location, address and parking directions (used for the Google and Apple Maps buttons), and the notes for players (for example, "Pizza provided"). Leave **Registration open** on.
 3. Copy the site link and send it to everyone. They tap **Sign in with Google to register**. The **Rules** page is open to everyone, so beginners can read it ahead of time.
 4. Check **Players** as people sign up. The **Paddles to bring** count tells you how many loaners to pack, and each player's level (New, Some, Regular) can be changed there. Add walk-ins there too. Everyone sees a **Who's coming** list on the Event page with names only (no emails). New sign-ups show up there while you have the site open, so open it now and then. Put couples on one line with a plus sign (`Eddie + Jess`) so they aren't paired as partners.
 
@@ -41,6 +41,7 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 
 - Nobody gets the same partner twice until it can't be avoided, and repeat opponents are kept low.
 - Games are balanced using each player's win rate so far. Before anyone has played, the experience level they picked at sign-up does the balancing, and it matters less as results come in.
+- **Kids' zone watchers:** with **Players sitting out watch the kids' zone** on, set **At least this many sit out each round** (2 by default) in Setup → Format. The site leaves enough people off the courts every round, even with exactly 12 or 16 players, and Format shows how many games each person gets. For only 2 courts at a time, set **Courts** to 2.
 - With uneven numbers, the extra players **sit out in turns**: never twice in a row, and everyone sits about the same number of times. With **Players sitting out watch the kids' zone** on (in Setup), they're shown as watching the kids.
 - 16 players fills 4 courts, 12 fills 3. With 13–15, 1–3 people sit out each round.
 - The leaderboard ranks by total points scored, then wins, then point difference. With 13–15 players, some people sit out one more round than others, which costs them a game's worth of points.
