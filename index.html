@@ -323,6 +323,8 @@ a.btn.primary{color:var(--brand-ink)}
 .scoreform .mrow span{font-weight:600}
 .nextup .btn{margin-top:10px;background:var(--accent-ink);color:var(--accent);border-color:transparent}
 .plist select{padding:7px 6px;font-size:14px}
+.pact{display:flex;gap:4px}
+.pinfo{grid-column:2/-1;margin-top:-4px;color:var(--muted)}
 .rules p{margin:0 0 8px}
 </style>
 </head>
@@ -375,7 +377,7 @@ let S = blank();
 let BE = null, user = null, isAdmin = false, regs = [], myReg = null, ready = false;
 let unRegs = null, unMy = null;
 let tab = null; try{tab=localStorage.getItem(KEY+':tab')}catch(e){}
-const ui = {swap:null, form:null, editing:false, bulk:'', busy:false, rep:{}, regEdit:null};
+const ui = {swap:null, form:null, editing:false, bulk:'', busy:false, rep:{}, regEdit:null, pEdit:null};
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -511,8 +513,7 @@ function syncRegs(){
     });
   });
   // Public "who's bringing what" list (names and items only).
-  const bl=regs.filter(r=>regBring(r)).map(r=>({uid:r.id,name:[r.name,r.partner].filter(Boolean).join(' & '),item:regBring(r)})).sort((a,b)=>a.name.localeCompare(b.name));
-  if(JSON.stringify(bl)!==JSON.stringify(S.bringing||[])){S.bringing=bl;ch=true}
+  if(rebuildBring())ch=true;
   const before=S.players.length;
   S.players=S.players.filter(p=>p.src!=='reg'||live.has(p.id));
   if(S.players.length!==before)ch=true;
@@ -534,6 +535,17 @@ function rosterList(){
 function rosterCard(){
   const r=rosterList();
   return `<section class="card"><h2>Who's coming${r.count?` <span class="muted" style="font-weight:500">(${r.count} player${r.count===1?'':'s'})</span>`:''}</h2>${r.rows.length?`<ul class="roster">${r.rows.map(x=>`<li class="${x.me?'me':''}">${esc(x.name)}</li>`).join('')}</ul>`:'<p class="muted" style="margin:0">No one yet. Be the first to sign up.</p>'}</section>`;
+}
+
+// Public "who's bringing what" list: registrations plus walk-ins (names and items only).
+// Walk-in notes are private, so they live in the organizer-only area, not on the public board.
+let wnotes={},unNotes=null;
+function rebuildBring(){
+  const bl=regs.filter(r=>regBring(r)).map(r=>({uid:r.id,name:[r.name,r.partner].filter(Boolean).join(' & '),item:regBring(r)}))
+    .concat(S.players.filter(p=>p.src!=='reg'&&p.bring).map(p=>({uid:'w_'+p.id,name:p.name,item:p.bring})))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+  if(JSON.stringify(bl)===JSON.stringify(S.bringing||[]))return false;
+  S.bringing=bl;return true;
 }
 
 /* ---------- actions ---------- */
@@ -797,8 +809,9 @@ function vPlayers(){
     <div class="row" style="margin-top:10px"><button class="btn primary" data-action="addPlayers">Add players</button>${S.players.length?'':'<button class="btn" data-action="sample">Load 16 sample names</button>'}</div>
   </section>
   <section class="card"><div class="spread" style="margin-bottom:6px"><h2 style="margin:0">All players (${all})</h2><span class="pill">${n} playing</span></div>
-    <p class="muted" style="margin:0 0 12px;font-size:13.5px">${n>=4?`${cp.courts} court${cp.courts===1?'':'s'} in use${cp.sit?` · ${cp.sit} sit${cp.sit===1?'s':''} out each round, taking turns`:' · everyone plays every round'}.`:'Need at least 4 players.'} Untick <b>Playing</b> for anyone who hasn't arrived or has left.</p>
-    ${S.players.length?`<div class="plist"><div class="prow muted" style="font-size:12px;font-weight:600"><span>Playing</span><span>Name</span><span>Level</span><span>Couple tag</span><span></span></div>${S.players.map(p=>`<div class="prow ${p.out?'off':''}"><input type="checkbox" data-here="${p.id}" ${p.out?'':'checked'} aria-label="Playing">${p.src==='reg'?`<span class="static">${esc(p.name)}<span class="chip">Registered</span></span>${lvlSel(p)}<span class="muted" style="font-size:13px">${p.group?'Couple':'—'}</span><span></span>`:`<input data-pname="${p.id}" value="${esc(p.name)}" aria-label="Name">${lvlSel(p)}<input data-pgroup="${p.id}" value="${esc(p.group)}" placeholder="—" aria-label="Couple tag"><button class="btn icon" data-action="delPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">✕</button>`}</div>`).join('')}</div>`:'<div class="empty">No players yet.</div>'}
+    <p class="muted" style="margin:0 0 12px;font-size:13.5px">${n>=4?`${cp.courts} court${cp.courts===1?'':'s'} in use${cp.sit?` · ${cp.sit} sit${cp.sit===1?'s':''} out each round, taking turns`:' · everyone plays every round'}.`:'Need at least 4 players.'} Untick <b>Playing</b> for anyone who hasn't arrived or has left. Tap ✎ to edit a walk-in's name, partner, food or note.</p>
+    ${(()=>{const ed=ui.pEdit,p=ed&&P(ed.id);if(!p)return '';return `<div class="card swapcard" style="margin-bottom:12px"><h3 style="margin:0 0 10px">Edit walk-in</h3><div class="form"><label>Name<input data-pedit="name" maxlength="40" value="${esc(ed.name)}"></label><label>Plays with (won't be paired as partners)<select data-pedit="mate"><option value="">Nobody</option>${S.players.filter(q=>q.id!==p.id&&q.src!=='reg').map(q=>`<option value="${q.id}" ${ed.mate===q.id?'selected':''}>${esc(q.name)}</option>`).join('')}</select></label><label>Bringing (everyone sees this)<input data-pedit="bring" maxlength="60" value="${esc(ed.bring)}" placeholder="Nothing"></label><label>Note (only you see this)<input data-pedit="note" maxlength="120" value="${esc(ed.note)}"></label><div class="row"><button class="btn primary" data-action="saveWalkin">Save</button><button class="btn" data-action="cancelWalkin">Cancel</button></div></div></div>`})()}
+    ${S.players.length?`<div class="plist"><div class="prow muted" style="font-size:12px;font-weight:600"><span>Playing</span><span>Name</span><span>Level</span><span>Couple</span><span></span></div>${S.players.map(p=>`<div class="prow ${p.out?'off':''}"><input type="checkbox" data-here="${p.id}" ${p.out?'':'checked'} aria-label="Playing">${p.src==='reg'?`<span class="static">${esc(p.name)}<span class="chip">Registered</span></span>${lvlSel(p)}<span class="muted" style="font-size:13px">${p.group?'Couple':'—'}</span><span></span>`:`<span class="static">${esc(p.name)}</span>${lvlSel(p)}<span class="muted" style="font-size:13px">${p.group?'Couple':'—'}</span><span class="pact"><button class="btn icon" data-action="editWalkin" data-id="${p.id}" aria-label="Edit ${esc(p.name)}">✎</button><button class="btn icon" data-action="delPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">✕</button></span>${p.bring||wnotes[p.id]?`<small class="pinfo">${[p.bring?'Bringing: '+esc(p.bring):'',wnotes[p.id]?'Note: '+esc(wnotes[p.id]):''].filter(Boolean).join(' · ')}</small>`:''}`}</div>`).join('')}</div>`:'<div class="empty">No players yet.</div>'}
   </section>`;
 }
 
@@ -937,7 +950,7 @@ function renderNav(tabs){
   if(!isAdmin&&tabs.length>1){bn.hidden=false;bn.innerHTML=tabs.map(k=>`<button data-tab="${k}" class="${k===tab?'on':''}" ${k===tab?'aria-current="page"':''}><span class="ico"><svg ${ICON_ATTR}>${ICONS[k]||''}</svg>${badge(k)}</span><span>${BN_LABELS[k]||TAB_LABELS[k]}</span></button>`).join('')}
   else{bn.hidden=true;bn.innerHTML=''}
 }
-function focusKey(el){if(!el||!el.dataset)return null;for(const k of ['score','rep','redit','bind','prize','pname','pgroup','pskill','form'])if(el.dataset[k]!=null)return `[data-${k}="${CSS.escape(el.dataset[k])}"]`;if(el.id)return '#'+CSS.escape(el.id);return null}
+function focusKey(el){if(!el||!el.dataset)return null;for(const k of ['score','rep','redit','pedit','bind','prize','pname','pgroup','pskill','form'])if(el.dataset[k]!=null)return `[data-${k}="${CSS.escape(el.dataset[k])}"]`;if(el.id)return '#'+CSS.escape(el.id);return null}
 function renderKeep(){
   const a=document.activeElement,k=focusKey(a);let s=null,e=null;try{s=a.selectionStart;e=a.selectionEnd}catch(x){}
   const open=[...document.querySelectorAll('details.past[open] summary b')].map(b=>b.textContent);
@@ -978,7 +991,7 @@ document.addEventListener('click',async e=>{
   switch(act){
     case 'addPlayers':{const t=$('#bulk').value;if(!t.trim()){toast('Type some names first');return}ui.bulk='';addPlayers(t);break}
     case 'sample':addPlayers(SAMPLE.join('\n'));break;
-    case 'delPlayer':{const p=P(id);if(S.rounds.some(r=>r.games.some(g=>g.a.concat(g.b).includes(id)))&&!confirm(`Remove ${p.name}? Their past games stay on the record. To just stop scheduling them, untick Playing instead.`))return;S.players=S.players.filter(x=>x.id!==id);save();break}
+    case 'delPlayer':{const p=P(id);if(S.rounds.some(r=>r.games.some(g=>g.a.concat(g.b).includes(id)))&&!confirm(`Remove ${p.name}? Their past games stay on the record. To just stop scheduling them, untick Playing instead.`))return;S.players=S.players.filter(x=>x.id!==id);rebuildBring();save();break}
     case 'delReg':{const r=regs.find(x=>x.id===id);if(!confirm(`Remove ${r?r.name:'this'} registration? They can register again while sign-ups are open.`))return;try{await BE.deleteReg(id);Promise.resolve(BE.deleteBringing(id)).catch(()=>{})}catch(err){toast('Could not remove: '+(err.code||err.message))}return}
     case 'newRound':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Start the next round anyway?'))return;if(newRound(false))toast(`Round ${lastRound().n} is set`);break}
     case 'champRound':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Start the championship anyway?'))return;if(!confirm('Start the championship? The top 4 play #1 & #4 vs #2 & #3. Everyone else plays one more game.'))return;if(newRound(true))toast('Championship game is set');break}
@@ -987,6 +1000,17 @@ document.addEventListener('click',async e=>{
     case 'swapPick':swapPick(a.dataset.pos);break;
     case 'editRegAdmin':{const r=regs.find(x=>x.id===id);if(!r)return;ui.regEdit={id,bring:regBring(r),note:regNote(r)};render();const el=document.querySelector('[data-redit=bring]');if(el){el.scrollIntoView({block:'center'});el.focus({preventScroll:true})}return}
     case 'cancelRegAdmin':ui.regEdit=null;break;
+    case 'editWalkin':{const p=P(id);if(!p)return;const m=p.group?S.players.find(q=>q.id!==id&&q.group===p.group):null;ui.pEdit={id,name:p.name,bring:p.bring||'',note:wnotes[id]||'',mate:m?m.id:''};render();const el=document.querySelector('[data-pedit=name]');if(el){el.scrollIntoView({block:'center'});el.focus({preventScroll:true})}return}
+    case 'cancelWalkin':ui.pEdit=null;break;
+    case 'saveWalkin':{const ed=ui.pEdit,p=ed&&P(ed.id);ui.pEdit=null;if(!p)break;
+      p.name=String(ed.name||'').trim().slice(0,40)||p.name;
+      {const oldMate=p.group?S.players.find(q=>q.id!==p.id&&q.group===p.group):null,mate=ed.mate?P(ed.mate):null;
+       if((oldMate&&oldMate.id)!==(mate&&mate.id)){
+         if(oldMate&&oldMate.src!=='reg'&&S.players.filter(q=>q.group===p.group).length<=2)oldMate.group='';
+         if(mate&&mate.src!=='reg'){const g=mate.group||('g'+uid().slice(0,4));mate.group=g;p.group=g}else p.group='';}}p.bring=String(ed.bring||'').trim().slice(0,60);if(!p.bring)delete p.bring;
+      const note=String(ed.note||'').trim().slice(0,120),nn={...wnotes};if(note)nn[p.id]=note;else delete nn[p.id];
+      if(JSON.stringify(nn)!==JSON.stringify(wnotes)){wnotes=nn;Promise.resolve(BE.saveNotes&&BE.saveNotes(nn)).catch(e=>{console.error(e);toast('Could not save the note')})}
+      rebuildBring();save();toast('Saved');break}
     case 'saveRegAdmin':{
       const ed=ui.regEdit,r=ed&&regs.find(x=>x.id===ed.id);if(!r){ui.regEdit=null;break}
       const bring=String(ed.bring||'').replace(/[⟪⟫⟦⟧]/g,'').trim().slice(0,60),note=String(ed.note||'').replace(/^[⟪⟦]/,'').trim().slice(0,120);
@@ -1015,6 +1039,7 @@ document.addEventListener('input',e=>{
   if(el.dataset.form!=null&&ui.form){ui.form[el.dataset.form]=el.value}
   if(el.id==='bulk')ui.bulk=el.value;
   if(el.dataset.redit!=null&&ui.regEdit)ui.regEdit[el.dataset.redit]=el.value;
+  if(el.dataset.pedit!=null&&ui.pEdit)ui.pEdit[el.dataset.pedit]=el.value;
   if(el.dataset.rep!=null){const [k,sd]=el.dataset.rep.split('|');(ui.rep[k]=ui.rep[k]||{})[sd]=el.value}
   if(el.id==='chatInput'){chat.draft=el.value;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px'}
 });
@@ -1063,7 +1088,7 @@ document.addEventListener('change',e=>{
   }
   if(d.prize!=null){S.event.prizes[d.prize]=el.value;save();return}
   if(d.here!=null){const p=P(d.here);if(p)p.out=!el.checked;save();render();return}
-  if(d.pname!=null){const p=P(d.pname);if(p)p.name=el.value.trim()||p.name;save();render();return}
+  if(d.pname!=null){const p=P(d.pname);if(p)p.name=el.value.trim()||p.name;rebuildBring();save();render();return}
   if(d.pskill!=null){const p=P(d.pskill);if(p)p.skill=Number(el.value)||0;save();return}
   if(d.pgroup!=null){const p=P(d.pgroup);if(p)p.group=el.value.trim();save();return}
 });
@@ -1090,7 +1115,9 @@ function localBackend(){
     watchChat(ep,cb){const o={ep,cb};this._chatCbs.push(o);setTimeout(()=>cb(this._chatGet(ep)),0);return()=>{this._chatCbs=this._chatCbs.filter(x=>x!==o)}},
     async sendChat(ep,m){const l=this._chatGet(ep);l.push({id:uid(),...m,at:Date.now()});this._chatPut(ep,l)},
     async deleteChat(ep,id){this._chatPut(ep,this._chatGet(ep).filter(x=>x.id!==id))},
-    async clearChat(ep){try{localStorage.removeItem(KEY+':chat:'+ep)}catch(e){}}
+    async clearChat(ep){try{localStorage.removeItem(KEY+':chat:'+ep)}catch(e){}},
+    watchNotes(cb){let n={};try{n=JSON.parse(localStorage.getItem(KEY+':notes'))||{}}catch(e){}setTimeout(()=>cb(n),0);return()=>{}},
+    async saveNotes(n){try{localStorage.setItem(KEY+':notes',JSON.stringify(n))}catch(e){}}
   };
 }
 async function firebaseBackend(cfg){
@@ -1121,6 +1148,8 @@ async function firebaseBackend(cfg){
     deleteMyReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
     watchRegs(cb){return F.onSnapshot(F.collection(db,'registrations'),qs=>cb(qs.docs.map(d=>({id:d.id,...d.data()}))),e=>console.error(e))},
     deleteReg(id){return F.deleteDoc(F.doc(db,'registrations',id))},
+    watchNotes(cb){return F.onSnapshot(F.doc(db,'admin','notes'),s=>{let n={};try{n=s.exists()?JSON.parse(s.data().json||'{}'):{}}catch(e){}cb(n)},e=>console.error(e))},
+    saveNotes(n){return F.setDoc(F.doc(db,'admin','notes'),{json:JSON.stringify(n),updatedAt:F.serverTimestamp()})},
     updateReg(id,d){return F.updateDoc(F.doc(db,'registrations',id),{...d,updatedAt:F.serverTimestamp()})},
     watchBringing(cb){return F.onSnapshot(F.collection(db,'bringing'),qs=>cb(qs.docs.map(d=>({uid:d.id,name:d.data().name,item:d.data().item}))),()=>cb(null))},
     setMyBringing(id,b){const ref=F.doc(db,'bringing',id);return b.item?F.setDoc(ref,{name:String(b.name||'').slice(0,90),item:String(b.item).slice(0,100),updatedAt:F.serverTimestamp()}):F.deleteDoc(ref)},
@@ -1141,11 +1170,13 @@ window.__tourney={state:()=>JSON.parse(JSON.stringify(S))};
 async function onAuth(u){
   user=u;
   isAdmin=BE.mode==='local'?true:(u?await BE.checkAdmin(u):false);
-  if(unRegs){unRegs();unRegs=null}if(unMy){unMy();unMy=null}
+  if(unRegs){unRegs();unRegs=null}if(unMy){unMy();unMy=null}if(unNotes){unNotes();unNotes=null}wnotes={};
   regs=[];myReg=null;ui.form=null;ui.editing=false;
+  if(!cloud()&&BE.watchNotes)unNotes=BE.watchNotes(n=>{wnotes=n||{};renderKeep()});
   if(cloud()&&u){
     unMy=BE.watchMyReg(u.uid,r=>{myReg=r;renderKeep()});
     if(isAdmin)unRegs=BE.watchRegs(r=>{regs=r;if(ready&&syncRegs())save();renderKeep()});
+    if(isAdmin&&BE.watchNotes)unNotes=BE.watchNotes(n=>{wnotes=n||{};renderKeep()});
   }
   if(isAdmin&&cloud()&&ready&&stateMissing){stateMissing=false;save(true)}
   if(isAdmin&&cloud()&&ready&&!metaSynced){metaSynced=true;save(true)}

@@ -55,6 +55,6 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 ## Good to know
 
 - Players can edit or cancel their own registration anytime, even after you close registration.
-- On **Players**, tap **Edit** under anyone's name to change their food item or note.
+- On **Players**, tap **Edit** under anyone's name to change their food item or note. For walk-ins, tap ✎ on their row to change their name, who they came with, their food, or a private note.
 - Anyone can add what food or drinks they're bringing. Everyone sees a **Who's bringing what** list on the Event page and under the sign-up box, so dishes don't double up.
 - **Setup → Backup** exports everything as a file anytime. **Clear all rounds** wipes the games but keeps players and settings, which is handy after a practice run.
