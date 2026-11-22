@@ -41,7 +41,8 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 
 - Nobody gets the same partner twice until it can't be avoided, and repeat opponents are kept low.
 - Games are balanced using each player's win rate so far. Before anyone has played, the experience level they picked at sign-up does the balancing, and it matters less as results come in.
-- **Kids' zone watchers:** with **Players sitting out watch the kids' zone** on, set **At least this many sit out each round** (2 by default) in Setup → Format. The site leaves enough people off the courts every round, even with exactly 12 or 16 players, and Format shows how many games each person gets. For only 2 courts at a time, set **Courts** to 2.
+- **Helpers:** at sign-up, people can choose to come and help with the kids instead of playing (for a couple: both, just one, or neither play). Helpers show as "helping" on the Who's coming list and are never put on a court. You can still tick them in on **Players** if they change their mind.
+- **Kids' zone watchers:** with **Players sitting out watch the kids' zone** on, set **At least this many sit out each round** (0 by default, since helpers can cover the kids) in Setup → Format. The site leaves enough people off the courts every round, even with exactly 12 or 16 players, and Format shows how many games each person gets. For only 2 courts at a time, set **Courts** to 2.
 - With uneven numbers, the extra players **sit out in turns**: never twice in a row, and everyone sits about the same number of times. With **Players sitting out watch the kids' zone** on (in Setup), they're shown as watching the kids.
 - 16 players fills 4 courts, 12 fills 3. With 13–15, 1–3 people sit out each round.
 - The leaderboard ranks by total points scored, then wins, then point difference. With 13–15 players, some people sit out one more round than others, which costs them a game's worth of points.
