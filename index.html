@@ -407,11 +407,13 @@ function bringList(){
   const m=new Map();
   (S.bringing||[]).forEach(x=>m.set(x.uid||('n:'+x.name),x));
   if(liveBring)liveBring.forEach(x=>m.set(x.uid,x));
+  if(user&&myReg)m.set(user.uid,{uid:user.uid,name:[myReg.name,myReg.partner].filter(Boolean).join(' & '),item:regBring(myReg)});
   return [...m.values()].filter(x=>x.item).sort((a,b)=>a.name.localeCompare(b.name));
 }
 function bringUL(list,small){return `<ul class="bringlist ${small?'small':''}">${list.map(x=>`<li><b>${esc(x.name)}</b><span>${esc(x.item)}</span></li>`).join('')}</ul>`}
-function regBring(r){if(!r)return '';if(r.bring)return r.bring;const n=r.note||'';if(n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?n.slice(BRING_TAG.length):n.slice(BRING_TAG.length,k)}return ''}
-function regNote(r){if(!r)return '';const n=String(r.note||'').replace(META_RE,'');if(!r.bring&&n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?'':n.slice(k+3)}return n}
+const BRING_RE=/^⟪([^⟫]*)⟫\s?/;
+function regBring(r){if(!r)return '';const n0=String(r.note||'').replace(META_RE,''),bm=n0.match(BRING_RE);if(bm)return bm[1];if(r.bring)return r.bring;const n=r.note||'';if(n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?n.slice(BRING_TAG.length):n.slice(BRING_TAG.length,k)}return ''}
+function regNote(r){if(!r)return '';const n=String(r.note||'').replace(META_RE,'').replace(BRING_RE,'');if(!r.bring&&n.startsWith(BRING_TAG)){const k=n.indexOf(' · ');return k<0?'':n.slice(k+3)}return n}
 // Experience level and loaner paddles ride at the front of the note, e.g. "⟦p1 s2 t1⟧ arriving late",
 // so they work with the existing Firebase rules.
 const META_RE=/^⟦([^⟧]*)⟧\s?/;
@@ -508,7 +510,9 @@ function syncRegs(){
         if((p.rs||0)!==sk){p.rs=sk;if(sk)p.skill=sk;ch=true}}
     });
   });
-  if((S.bringing||[]).length){S.bringing=[];ch=true}
+  // Public "who's bringing what" list (names and items only).
+  const bl=regs.filter(r=>regBring(r)).map(r=>({uid:r.id,name:[r.name,r.partner].filter(Boolean).join(' & '),item:regBring(r)})).sort((a,b)=>a.name.localeCompare(b.name));
+  if(JSON.stringify(bl)!==JSON.stringify(S.bringing||[])){S.bringing=bl;ch=true}
   const before=S.players.length;
   S.players=S.players.filter(p=>p.src!=='reg'||live.has(p.id));
   if(S.players.length!==before)ch=true;
@@ -698,14 +702,14 @@ function vRegister(){
     const names=[myReg.name,myReg.partner].filter(Boolean);
     body=`<section class="card"><h2>You're registered</h2>
       <div class="status"><span class="pill ok">Registered</span></div>
-      <table><tbody><tr><th>Playing</th><td>${names.map(esc).join(' & ')}</td></tr>${(()=>{const m=regMeta(myReg),lv=names.map((n,i)=>m.skill[i]?(names.length>1?esc(n)+': ':'')+SKILLS[m.skill[i]]:'').filter(Boolean);return (lv.length?`<tr><th>Experience</th><td>${lv.join('<br>')}</td></tr>`:'')+`<tr><th>Borrowing paddles</th><td>${m.paddles?(m.paddles===1?'1 (we\'ll have one ready)':'2 (we\'ll have them ready)'):'No'}</td></tr>`})()}<tr><th>Kids coming</th><td>${esc(myReg.kids||0)}</td></tr>${regNote(myReg)?`<tr><th>Note</th><td>${esc(regNote(myReg))}</td></tr>`:''}</tbody></table>
+      <table><tbody><tr><th>Playing</th><td>${names.map(esc).join(' & ')}</td></tr>${(()=>{const m=regMeta(myReg),lv=names.map((n,i)=>m.skill[i]?(names.length>1?esc(n)+': ':'')+SKILLS[m.skill[i]]:'').filter(Boolean);return (lv.length?`<tr><th>Experience</th><td>${lv.join('<br>')}</td></tr>`:'')+`<tr><th>Borrowing paddles</th><td>${m.paddles?(m.paddles===1?'1 (we\'ll have one ready)':'2 (we\'ll have them ready)'):'No'}</td></tr>`})()}<tr><th>Kids coming</th><td>${esc(myReg.kids||0)}</td></tr>${regBring(myReg)?`<tr><th>Bringing</th><td>${esc(regBring(myReg))}</td></tr>`:''}${regNote(myReg)?`<tr><th>Note</th><td>${esc(regNote(myReg))}</td></tr>`:''}</tbody></table>
       <p class="muted">You'll get a new partner every game. On the day, open <b>My games</b> to see your court.</p>
-      <div class="row" style="margin-top:12px">${e.regOpen?'<button class="btn" data-action="editReg">Edit</button>':''}<button class="btn danger" data-action="cancelReg">Cancel registration</button></div></section>`;
+      <div class="row" style="margin-top:12px"><button class="btn" data-action="editReg">Edit</button><button class="btn danger" data-action="cancelReg">Cancel registration</button></div></section>`;
   } else if(!e.regOpen&&!myReg){
     body=`<section class="card"><h2>Registration is closed</h2><p class="muted">Reach out to the organizer if you still want to play.</p></section>`;
   } else {
     const m0=regMeta(myReg);
-    const f=ui.form||(ui.form={name:myReg?myReg.name:(user.displayName||''),partner:myReg?myReg.partner||'':'',kids:myReg?myReg.kids||0:0,note:myReg?regNote(myReg):'',skill:m0.skill[0]||'',pskill:m0.skill[1]||'',paddles:m0.paddles||0});
+    const f=ui.form||(ui.form={name:myReg?myReg.name:(user.displayName||''),partner:myReg?myReg.partner||'':'',kids:myReg?myReg.kids||0:0,note:myReg?regNote(myReg):'',bring:myReg?regBring(myReg):'',skill:m0.skill[0]||'',pskill:m0.skill[1]||'',paddles:m0.paddles||0});
     const lvl=(k,v)=>`<select data-form="${k}" required><option value="">Pick one</option>${[1,2,3].map(i=>`<option value="${i}" ${String(v)===String(i)?'selected':''}>${SKILLS[i]}</option>`).join('')}</select>`;
     const pn=String(f.partner||'').trim();
     body=`<section class="card"><h2>${myReg?'Edit registration':'Register'}</h2><form class="form" data-form-root>
@@ -717,14 +721,18 @@ function vRegister(){
       <small style="margin-top:-6px">This helps us make fair games from the start.</small>
       <label>Need to borrow a paddle?<select data-form="paddles"><option value="0" ${+f.paddles===0?'selected':''}>No, I have my own</option><option value="1" ${+f.paddles===1?'selected':''}>Yes, 1 paddle</option><option value="2" ${+f.paddles===2?'selected':''}>Yes, 2 paddles</option></select></label>
       <label>Kids coming (not playing)<input data-form="kids" type="number" min="0" max="10" inputmode="numeric" value="${esc(f.kids)}"></label>
-      <label>Note for the organizer (optional)<input data-form="note" maxlength="180" value="${esc(f.note)}" placeholder="Allergies, arriving late, etc."></label>
+      <label>Bringing any food or drinks? (optional)<input data-form="bring" maxlength="60" value="${esc(f.bring)}" placeholder="Chips, a dessert, drinks…"></label>
+      ${(()=>{const others=bringList().filter(x=>x.uid!==user.uid);return others.length?`<div class="already"><small>Everyone can see this. Already coming:</small>${bringUL(others,true)}</div>`:'<small style="margin-top:-6px">Everyone can see this, so dishes don’t double up.</small>'})()}
+      <label>Note for the organizer (optional)<input data-form="note" maxlength="120" value="${esc(f.note)}" placeholder="Allergies, arriving late, etc."></label>
       <div class="row"><button class="btn primary big" type="submit" ${ui.busy?'disabled':''}>${myReg?'Save changes':'Register'}</button>${myReg?'<button class="btn" type="button" data-action="cancelEdit">Cancel</button>':''}</div>
       <small>Signed in as ${esc(user.email)}</small>
     </form></section>`;
   }
   const mq=encodeURIComponent([e.location,e.address].filter(Boolean).join(', '));
   const there=(e.location||e.address)?`<section class="card"><h2>Getting there</h2><p style="margin-top:0"><b>${esc(e.location)}</b>${e.address?'<br>'+esc(e.address):''}</p>${e.directions?`<p class="muted" style="white-space:pre-line">${esc(e.directions)}</p>`:''}<div class="row"><a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=${mq}" target="_blank" rel="noopener">Google Maps</a><a class="btn" href="https://maps.apple.com/?q=${mq}" target="_blank" rel="noopener">Apple Maps</a></div></section>`:'';
-  return hero+body+rosterCard()+there+how;
+  const bl=bringList();
+  const bringCard=bl.length?`<section class="card"><h2>Who's bringing what</h2>${bringUL(bl)}</section>`:'';
+  return hero+body+rosterCard()+bringCard+there+how;
 }
 
 function vSetup(){
@@ -777,7 +785,7 @@ function vPlayers(){
   const kids=kidsTotal(),all=S.players.length,n=active().length,cp=courtPlan(n),pad=paddlesTotal();
   const regRows=regs.slice().sort((a,b)=>((a.createdAt&&a.createdAt.seconds)||0)-((b.createdAt&&b.createdAt.seconds)||0));
   const regCard=cloud()?`<section class="card"><div class="spread" style="margin-bottom:12px"><h2 style="margin:0">Registrations (${regs.length})</h2><span class="pill ${S.event.regOpen?'ok':''}">${S.event.regOpen?'Open':'Closed'}</span></div>
-    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th class="num">Paddles</th><th>Level</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>{const m=regMeta(r);return `<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td class="num">${m.paddles||''}</td><td><small>${[r.name,r.partner].filter(Boolean).map((x,i)=>SKILL_SHORT[m.skill[i]||0]).join(' / ')}</small></td><td><small>${esc(regNote(r))}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
+    ${regRows.length?`<div class="tablewrap"><table><thead><tr><th>Players</th><th>Email</th><th class="num">Kids</th><th class="num">Paddles</th><th>Level</th><th>Bringing</th><th>Note</th><th></th></tr></thead><tbody>${regRows.map(r=>{const m=regMeta(r);return `<tr><td><b>${esc(r.name)}</b>${r.partner?' & '+esc(r.partner):''}</td><td><small>${esc(r.email)}</small></td><td class="num">${esc(r.kids||0)}</td><td class="num">${m.paddles||''}</td><td><small>${[r.name,r.partner].filter(Boolean).map((x,i)=>SKILL_SHORT[m.skill[i]||0]).join(' / ')}</small></td><td><small>${esc(regBring(r))}</small></td><td><small>${esc(regNote(r))}</small></td><td><button class="btn icon small" data-action="delReg" data-id="${esc(r.id)}" aria-label="Remove registration">✕</button></td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">No one has registered yet. Share the site link.</div>'}
   </section>`:'';
   return `
   <div class="stats"><div class="stat"><b>${all}</b><span>Players</span></div><div class="stat"><b>${kids}</b><span>Kids</span></div><div class="stat"><b>${all+kids}</b><span>Total guests</span></div>${cloud()?`<div class="stat"><b>${pad}</b><span>Paddles to bring</span></div>`:''}</div>
@@ -1007,17 +1015,18 @@ document.addEventListener('submit',async e=>{
   if(!name){toast('Please enter your name');return}
   const kids=Math.max(0,Math.min(10,parseInt(f.kids,10)||0));
   if(!f.skill){toast('Pick your pickleball experience');return}
+  const bring=String(f.bring||'').replace(/[⟪⟫⟦⟧]/g,'').trim().slice(0,60);
   if(partner&&!f.pskill){toast(`Pick ${partner}'s experience`);return}
   const meta={paddles:Math.max(0,Math.min(2,parseInt(f.paddles,10)||0)),skill:[parseInt(f.skill,10)||0,partner?(parseInt(f.pskill,10)||0):0]};
   ui.busy=true;render();
-  const data={name:name.slice(0,40),partner:partner.slice(0,40),kids,note:(metaTag(meta)+String(f.note||'').trim()).slice(0,200)};
+  const data={name:name.slice(0,40),partner:partner.slice(0,40),kids,note:(metaTag(meta)+(bring?'⟪'+bring+'⟫ ':'')+String(f.note||'').trim()).slice(0,200)};
   try{
     await BE.saveMyReg(user.uid,data,!myReg);
-    // Potluck sign-ups are gone (pizza is provided): clear any old "bringing" entry.
-    Promise.resolve(BE.setMyBringing(user.uid,{item:''})).catch(()=>{});
+    // Live public list (works once the latest Firebase rules are published; the organizer's copy covers it until then).
+    Promise.resolve(BE.setMyBringing(user.uid,{name:[data.name,data.partner].filter(Boolean).join(' & '),item:bring})).catch(()=>{});
     ui.editing=false;ui.form=null;toast(myReg?'Changes saved':'You’re registered!');
   }
-  catch(err){console.error(err);toast(err&&err.code==='permission-denied'?'Registration is closed':'Could not register: '+(err.code||err.message))}
+  catch(err){console.error(err);toast(err&&err.code==='permission-denied'?(myReg?'Could not save your changes. Ask the organizer to publish the latest rules.':'Registration is closed'):'Could not save: '+(err.code||err.message))}
   ui.busy=false;render();
 });
 document.addEventListener('change',e=>{
