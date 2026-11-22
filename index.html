@@ -306,6 +306,12 @@ body.player .composer{bottom:calc(66px + env(safe-area-inset-bottom))}
 .champcard b{display:block;font-family:var(--display);font-size:28px;line-height:1.15;margin:4px 0}
 .champcard .ru{margin-top:10px;font-size:14px}
 .champcard .ru small{display:inline;opacity:.75}
+.champcard>div{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--accent-ink) 15%,transparent)}
+.champcard>div:first-of-type{border-top:0}
+.champcard>div b{display:inline;font-size:22px;margin:0}
+.champcard .win0 b{font-size:28px}
+.champcard em{font-style:normal;font-weight:600;opacity:.75}
+.champcard .pz{flex-basis:100%;font-size:14px;font-weight:600}
 table.lb td{vertical-align:middle}
 table.lb tr.cutline td{border-bottom:2px dashed var(--accent)}
 details.past summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;min-height:28px}
@@ -359,11 +365,12 @@ const ICONS = {
 };
 const SAMPLE = ['Eddie + Jess','Marco + Lina','Sam + Priya','Dave + Kim','Tony + Grace','Ben + Chloe','Ray','Mia','Josh','Ana'];
 
-function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',address:'16333 Fairfield Ranch Rd, Chino Hills, CA 91709',directions:'Build Pickleball is inside the Big League Dreams sports park. Park in the Big League Dreams lot.',selfScore:true,notes:'Pizza provided. Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,chatOn:true,prizes:{champ:'Trophy + gift card each',runner:'Gift card each'}},players:[],rounds:[],bringing:[],chatEpoch:'main'}}
+function blank(){return {event:{name:'Pickleball Party',date:'',time:'',start:'16:00',end:'19:45',location:'Build Pickleball, Chino Hills',address:'16333 Fairfield Ranch Rd, Chino Hills, CA 91709',directions:'Build Pickleball is inside the Big League Dreams sports park. Park in the Big League Dreams lot.',selfScore:true,notes:'Pizza provided. Kids welcome in the kids’ zone.',courts:4,minutes:15,rounds:7,sitKids:true,regOpen:true,published:false,chatOn:true,finished:false,prizes:{first:'Trophy + prize',second:'Prize',third:'Prize'}},players:[],rounds:[],bringing:[],chatEpoch:'main'}}
 function normalize(d){
   const b=blank();d=Object.assign(b,d||{});
   d.event=Object.assign(blank().event,d.event||{});
-  const pz=d.event.prizes||{};d.event.prizes={champ:typeof pz.champ==='string'?pz.champ:blank().event.prizes.champ,runner:typeof pz.runner==='string'?pz.runner:blank().event.prizes.runner};
+  const pz=d.event.prizes||{},bp=blank().event.prizes,str=x=>typeof x==='string'?x:null;
+  d.event.prizes={first:str(pz.first)??bp.first,second:str(pz.second)??bp.second,third:str(pz.third)??bp.third};
   ['teams','games','bracket','raffle'].forEach(k=>delete d[k]);
   ['pools','funNames','payInfo','fee'].forEach(k=>delete d.event[k]);
   if(!Array.isArray(d.players))d.players=[];
@@ -466,9 +473,8 @@ function ranking(st){
   st=st||computeStats();
   return S.players.map(p=>st[p.id]).filter(Boolean).sort((x,y)=>{
     if(!!y.GP-!!x.GP)return !!y.GP-!!x.GP;
-    const wx=x.GP?x.W/x.GP:0,wy=y.GP?y.W/y.GP:0;
-    const dx=x.GP?(x.PF-x.PA)/x.GP:0,dy=y.GP?(y.PF-y.PA)/y.GP:0;
-    return wy-wx||y.W-x.W||dy-dx||y.PF-x.PF||nm(x.id).localeCompare(nm(y.id));
+    // Most total points scored wins; ties go to more wins, then better point difference.
+    return y.PF-x.PF||y.W-x.W||(y.PF-y.PA)-(x.PF-x.PA)||nm(x.id).localeCompare(nm(y.id));
   });
 }
 
@@ -597,7 +603,7 @@ function newRound(isFinal){
   }
   const startCourt=champ?2:1;
   const games=(champ?[champ]:[]).concat(best.map((g,i)=>({court:startCourt+i,a:g.a,b:g.b,sa:null,sb:null})));
-  S.rounds.push({n:S.rounds.length+1,final:!!isFinal,games,sit});
+  S.rounds.push({n:S.rounds.length+1,final:!!isFinal,games,sit});S.event.finished=false;
   ui.swap=null;save(true);
   return true;
 }
@@ -704,7 +710,7 @@ function vRegister(){
   const facts=[['When',when],e.location?['Where',e.location]:null].filter(Boolean);
   const cd=countdown();
   const hero=`<section class="card hero">${cd?`<div class="countdown">${cd}</div>`:''}<h2>${esc(e.name)}</h2><div class="facts">${facts.map(f=>`<div><b>${f[0]}</b>${esc(f[1])}</div>`).join('')}</div>${e.notes?`<p style="white-space:pre-line">${esc(e.notes)}</p>`:''}</section>`;
-  const how=`<section class="card"><h2>How it works</h2><ul class="howlist"><li><b>New partner every game.</b> You'll meet everyone. No need to bring a partner.</li><li><b>Short games.</b> First to 11, every rally scores, about ${esc(e.minutes)} minutes.</li><li><b>Everyone plays all night.</b> Wins and points add up on a live leaderboard.</li><li><b>Big finish.</b> The top 4 play the championship game.</li></ul><p class="muted" style="margin:8px 0 0">New to pickleball? Perfect. This is built for beginners.</p><button class="btn" style="margin-top:12px" data-tab="rules">Read the rules (2 min)</button></section>`;
+  const how=`<section class="card"><h2>How it works</h2><ul class="howlist"><li><b>New partner every game.</b> You'll meet everyone. No need to bring a partner.</li><li><b>Short games.</b> First to 11, every rally scores, about ${esc(e.minutes)} minutes.</li><li><b>Everyone plays all night.</b> Wins and points add up on a live leaderboard.</li><li><b>Top 3 win.</b> Whoever scores the most total points takes 1st, 2nd and 3rd.</li></ul><p class="muted" style="margin:8px 0 0">New to pickleball? Perfect. This is built for beginners.</p><button class="btn" style="margin-top:12px" data-tab="rules">Read the rules (2 min)</button></section>`;
   let body='';
   if(!cloud()){
     body=`<section class="card"><h2>Registration</h2><div class="banner">Registration and Google sign-in turn on once Firebase is set up (see the README). Right now you're in local organizer mode.</div></section>`;
@@ -755,7 +761,7 @@ function vSetup(){
     ['players','Collect players',S.players.length>=4,`${S.players.length} players`],
     ['setup','Show courts and leaderboard to everyone',!!e.published,e.published?'Visible to players':'Hidden from players'],
     ['play','Play the rounds',played>=target,`${played} of ${target} rounds`],
-    ['play','Championship game',!!(cg&&winSide(cg)),cg?(winSide(cg)?'Done':'In progress'):'Top 4: #1 & #4 vs #2 & #3']
+    ['play','Announce the top 3',!!e.finished,e.finished?'Winners are on the leaderboard':'Most total points wins']
   ];
   return `
   ${cloud()?'':'<div class="banner">Local mode: data stays on this device and there is no sign-in. Add your Firebase settings (see README) to turn on Google sign-in, registration and live updates for everyone.</div>'}
@@ -779,12 +785,13 @@ function vSetup(){
   <section class="card"><h2>Format</h2><div class="grid2">
     <label>Courts<input type="number" min="1" max="12" data-bind="courts" value="${esc(e.courts)}"></label>
     <label>Minutes per game<input type="number" min="5" max="30" data-bind="minutes" value="${esc(e.minutes)}"></label>
-    <label>Rounds before the championship<input type="number" min="1" max="20" data-bind="rounds" value="${esc(e.rounds)}"></label>
+    <label>Rounds<input type="number" min="1" max="20" data-bind="rounds" value="${esc(e.rounds)}"></label>
     <label class="check" style="grid-column:1/-1"><input type="checkbox" data-bind="sitKids" ${e.sitKids?'checked':''}> Players sitting out watch the kids’ zone</label>
   </div><p class="muted" style="margin:10px 0 0">${n?`${n} playing → ${cp.courts} court${cp.courts===1?'':'s'} in use${cp.sit?`, ${cp.sit} sit${cp.sit===1?'s':''} out each round (it rotates)`:', nobody sits out'}. `:''}${target} rounds ≈ ${target*step()} min of play.</p></section>
   <section class="card"><h2>Prizes</h2><div class="grid2">
-    <label>Champions (winners of the championship game)<input data-prize="champ" value="${esc(e.prizes.champ)}"></label>
-    <label>Runners-up<input data-prize="runner" value="${esc(e.prizes.runner)}"></label>
+    <label>1st place<input data-prize="first" value="${esc(e.prizes.first)}"></label>
+    <label>2nd place<input data-prize="second" value="${esc(e.prizes.second)}"></label>
+    <label>3rd place<input data-prize="third" value="${esc(e.prizes.third)}"></label>
   </div></section>
   <section class="card"><h2>Backup</h2>
     <p class="muted" style="margin-top:0">${cloud()?'Everything is saved online. Export a backup copy anytime.':'Data lives in this browser. Export a backup to keep it safe.'}</p>
@@ -825,8 +832,8 @@ function vPlay(){
     const done=roundDone(r),scored=r.games.filter(winSide).length,any=r.games.some(g=>g.sa!=null||g.sb!=null);
     const title=r.final?'Championship round':`Round ${r.n} of ${target}`;
     let next='';
-    if(done&&!cg)next=regular<target?`<button class="btn primary big" data-action="newRound">Start round ${r.n+1}</button><button class="btn" data-action="champRound">Go to championship</button>`:`<button class="btn accent big" data-action="champRound">Start championship game</button><button class="btn" data-action="newRound">Play another round</button>`;
-    else if(done&&cg)next=`<button class="btn" data-tab="board">See final results</button>`;
+    if(S.event.finished)next=`<button class="btn primary" data-tab="board">See the winners</button><button class="btn" data-action="unfinish">Undo finish</button>`;
+    else if(done)next=regular<target?`<button class="btn primary big" data-action="newRound">Start round ${r.n+1}</button><button class="btn" data-action="finish">Finish and announce top 3</button>`:`<button class="btn accent big" data-action="finish">Finish and announce top 3</button><button class="btn" data-action="newRound">Play another round</button>`;
     head=`<section class="card"><div class="spread"><h2 style="margin:0">${title}</h2><span class="pill ${done?'ok':''}">${scored}/${r.games.length} scores in</span></div>
       ${done?'':`<p class="muted" style="margin:8px 0 0">Enter each score as games finish. ${any?'':'Need a change? Tap two names to swap them, or reshuffle.'}</p>`}
       ${pendingReports()?`<p style="margin:8px 0 0"><span class="pill you">${pendingReports()} score${pendingReports()===1?'':'s'} waiting for you</span></p>`:''}
@@ -891,14 +898,13 @@ function vMine(){
 
 function vBoard(){
   if(!canSeeBoard())return notPosted();
-  const st=computeStats(),rk=ranking(st).filter(x=>x.GP>0),mine=new Set(myPlayerIds()),cg=champGame();
+  const st=computeStats(),rk=ranking(st).filter(x=>x.GP>0),mine=new Set(myPlayerIds()),done=!!S.event.finished,pz=S.event.prizes;
   let champ='';
-  if(cg){const w=winSide(cg);
-    champ=w?`<section class="card champcard"><small>Champions</small><b>${esc(pair(cg[w]))}</b><span>${esc(S.event.prizes.champ)}</span><div class="ru"><small>Runners-up</small> ${esc(pair(cg[w==='a'?'b':'a']))} · ${esc(S.event.prizes.runner)}</div></section>`
-      :`<section class="card champcard"><small>Championship game · Court ${cg.court}</small><b>${esc(pair(cg.a))}</b><span>vs ${esc(pair(cg.b))}</span></section>`}
+  if(done&&rk.length){const pl=[['1st',pz.first],['2nd',pz.second],['3rd',pz.third]];
+    champ=`<section class="card champcard"><small>Winners</small>${rk.slice(0,3).map((x,i)=>`<div class="win${i}"><span class="medal m${i+1}">${i+1}</span> <b>${esc(nm(x.id))}</b> <em>${x.PF} pts</em>${pl[i][1]?`<div class="pz">${esc(pl[i][1])}</div>`:''}</div>`).join('')}</section>`}
   if(!rk.length)return champ+'<section class="card empty">The leaderboard fills in as scores come in.</section>';
-  const rows=rk.map((x,i)=>{const d=x.PF-x.PA;return `<tr class="${mine.has(x.id)?'mine':''} ${i===3&&!cg?'cutline':''}"><td>${i<3?`<span class="medal m${i+1}">${i+1}</span>`:`<span class="place">${i+1}</span>`}</td><td><b>${esc(nm(x.id))}</b></td><td class="num">${x.W}–${x.L}</td><td class="num">${d>0?'+':''}${d}</td></tr>`}).join('');
-  return `${champ}<section class="card"><div class="spread" style="margin-bottom:8px"><h2 style="margin:0">Leaderboard</h2>${cg?'':'<span class="pill">Top 4 play the final</span>'}</div><table class="lb"><thead><tr><th></th><th>Player</th><th class="num">W–L</th><th class="num">+/−</th></tr></thead><tbody>${rows}</tbody></table><p class="muted" style="margin:10px 0 0;font-size:12.5px">Ranked by win rate, then point difference. Sit-outs don't count against you.</p></section>`;
+  const rows=rk.map((x,i)=>{const d=x.PF-x.PA;return `<tr class="${mine.has(x.id)?'mine':''} ${i===3&&!done?'cutline':''}"><td>${i<3?`<span class="medal m${i+1}">${i+1}</span>`:`<span class="place">${i+1}</span>`}</td><td><b>${esc(nm(x.id))}</b></td><td class="num"><b>${x.PF}</b></td><td class="num">${x.W}–${x.L}</td><td class="num">${d>0?'+':''}${d}</td></tr>`}).join('');
+  return `${champ}<section class="card"><div class="spread" style="margin-bottom:8px"><h2 style="margin:0">Leaderboard</h2>${done?'<span class="pill ok">Final</span>':'<span class="pill">Top 3 win prizes</span>'}</div><table class="lb"><thead><tr><th></th><th>Player</th><th class="num">Pts</th><th class="num">W–L</th><th class="num">+/−</th></tr></thead><tbody>${rows}</tbody></table><p class="muted" style="margin:10px 0 0;font-size:12.5px">Ranked by total points scored, then wins, then point difference.</p></section>`;
 }
 
 function vRules(){
@@ -994,6 +1000,8 @@ document.addEventListener('click',async e=>{
     case 'delPlayer':{const p=P(id);if(S.rounds.some(r=>r.games.some(g=>g.a.concat(g.b).includes(id)))&&!confirm(`Remove ${p.name}? Their past games stay on the record. To just stop scheduling them, untick Playing instead.`))return;S.players=S.players.filter(x=>x.id!==id);rebuildBring();save();break}
     case 'delReg':{const r=regs.find(x=>x.id===id);if(!confirm(`Remove ${r?r.name:'this'} registration? They can register again while sign-ups are open.`))return;try{await BE.deleteReg(id);Promise.resolve(BE.deleteBringing(id)).catch(()=>{})}catch(err){toast('Could not remove: '+(err.code||err.message))}return}
     case 'newRound':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Start the next round anyway?'))return;if(newRound(false))toast(`Round ${lastRound().n} is set`);break}
+    case 'finish':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Finish anyway?'))return;if(!confirm('Finish the event and show the top 3 on the leaderboard?'))return;S.event.finished=true;save(true);toast('Winners announced');go('board');return}
+    case 'unfinish':S.event.finished=false;save(true);break;
     case 'champRound':{const r=lastRound();if(r&&!roundDone(r)&&!confirm('This round is missing scores. Start the championship anyway?'))return;if(!confirm('Start the championship? The top 4 play #1 & #4 vs #2 & #3. Everyone else plays one more game.'))return;if(newRound(true))toast('Championship game is set');break}
     case 'reshuffle':{const r=lastRound();if(!r)return;S.rounds.pop();if(!newRound(!!r.final))S.rounds.push(r);else toast('Reshuffled');break}
     case 'delRound':{const r=lastRound();if(!r)return;if(!confirm(`Delete ${r.final?'the championship round':'round '+r.n}${r.games.some(g=>g.sa!=null||g.sb!=null)?' and its scores':''}?`))return;S.rounds.pop();ui.swap=null;save(true);break}
@@ -1027,7 +1035,7 @@ document.addEventListener('click',async e=>{
     case 'swapCancel':ui.swap=null;break;
     case 'export':{const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob);const l=document.createElement('a');l.href=u;l.download=(S.event.name||'pickleball').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-backup.json';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);return}
     case 'import':$('#importFile').click();return;
-    case 'resetRounds':if(confirm('Clear every round and score? Players and settings stay.')){S.rounds=[];ui.swap=null;save(true)}break;
+    case 'resetRounds':if(confirm('Clear every round and score? Players and settings stay.')){S.rounds=[];S.event.finished=false;ui.swap=null;save(true)}break;
     case 'clearChat':{if(!confirm('Clear the chat for everyone?'))return;const old=S.chatEpoch;S.chatEpoch=uid();save(true);ensureChat();Promise.resolve(BE.clearChat(old)).catch(()=>{});toast('Chat cleared');break}
     case 'chatOnBtn':S.event.chatOn=true;save(true);ensureChat();break;
     case 'reset':if(confirm('Erase all players, rounds, scores, chat and settings? Online registrations stay and will be added back.')){const oldChat=S.chatEpoch;S=blank();S.chatEpoch=uid();Promise.resolve(BE.clearChat(oldChat)).catch(()=>{});syncRegs();save(true)}break;

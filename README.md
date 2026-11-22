@@ -2,7 +2,7 @@
 
 A sign-up and game-day site for a beginner-friendly pickleball social, hosted on GitHub Pages with Google sign-in.
 
-**Format: rotating partners.** Everyone gets a new partner every game. Wins and points go on a live leaderboard, and the top 4 finish with a championship game (#1 & #4 vs #2 & #3).
+**Format: rotating partners.** Everyone gets a new partner every game. Points go on a live leaderboard, and the 3 players with the most total points win 1st, 2nd and 3rd.
 
 - **Players** sign in with Google and register (their name, an optional spouse or friend, their experience level, whether they need to borrow a paddle, and how many kids are coming). On their phone they get a bottom bar with **Event**, **My games** (their court, partner and results), **Now playing**, **Leaderboard** and **Rules**.
 - **You (admin)** get pages no one else can see: registrations with emails, walk-ins, who's playing, building each round, score entry, and settings.
@@ -34,8 +34,8 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 3. On **Play**, tap **Start round 1**. Everyone's phone shows their court and partner.
    - Need a change before a game starts? Tap two names to swap them, or tap **Reshuffle**.
 4. Enter each score as games finish, or let players do it: they send their score from **My games**, the **Play** tab shows a red badge, and you tap **Approve** (or **Dismiss**). Turn this off in Setup if you'd rather enter every score yourself. When all are in, tap **Start round 2**, and so on.
-5. After the last round (7 by default), tap **Start championship game**. The top 4 play #1 & #4 vs #2 & #3 on Court 1, and everyone else plays one more game.
-6. The Leaderboard shows the champions and runners-up with their prizes.
+5. After the last round (7 by default), tap **Finish and announce top 3**. You can also finish early after any round, or tap **Play another round** if there's time.
+6. The Leaderboard shows the top 3 with their prizes (set them in **Setup → Prizes**). Tap **Undo finish** on Play if you need to keep going.
 
 ## How the rounds are built
 
@@ -43,7 +43,7 @@ Project `pickleball-party-dd624` is set up: Google sign-in is on, `finalydev.git
 - Games are balanced using each player's win rate so far. Before anyone has played, the experience level they picked at sign-up does the balancing, and it matters less as results come in.
 - With uneven numbers, the extra players **sit out in turns**: never twice in a row, and everyone sits about the same number of times. With **Players sitting out watch the kids' zone** on (in Setup), they're shown as watching the kids.
 - 16 players fills 4 courts, 12 fills 3. With 13–15, 1–3 people sit out each round.
-- The leaderboard ranks by win rate, then point difference, so sitting out never hurts anyone.
+- The leaderboard ranks by total points scored, then wins, then point difference. With 13–15 players, some people sit out one more round than others, which costs them a game's worth of points.
 
 ## Event chat
 
